@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>N-gram Language Models &amp; Perplexity · FoVL Notes</title>
+<meta name="description" content="Simple, example-first notes for Foundations of Vision and Language (FoVL) — language & NLP part.">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/style.css">
+<script src="../assets/app.js"></script>
+</head>
+<body data-page="07-ngram-language-models">
+<header class="topbar"><div class="in"><button class="btn menu-btn" id="menuBtn" aria-label="Open menu">☰ Topics</button><a class="brand" href="../index.html">FoVL <span>Notes</span></a><div class="spacer"></div><a class="btn hide-sm" href="../notes/19-exam-cheatsheet.html">Cheat-sheet</a><button class="btn" id="themeBtn" aria-label="Toggle dark mode">☾ Theme</button></div><div class="progress"></div></header>
+<div class="layout">
+<aside class="side">
+<h4>Language, Information &amp; Classical NLP</h4>
+<a class="" data-mod="01-what-is-language" href="01-what-is-language.html"><span class="n">01</span>What is Language?</a>
+<a class="" data-mod="02-can-machines-understand" href="02-can-machines-understand.html"><span class="n">02</span>Can Machines Understand Language?</a>
+<a class="" data-mod="03-nlp-nlu-cl" href="03-nlp-nlu-cl.html"><span class="n">03</span>NLP vs NLU vs Computational Linguistics</a>
+<a class="" data-mod="04-zipfs-law" href="04-zipfs-law.html"><span class="n">04</span>Zipf&#x27;s Law: The Shape of Language</a>
+<a class="" data-mod="05-shannon-redundancy" href="05-shannon-redundancy.html"><span class="n">05</span>Shannon, Redundancy &amp; Entropy</a>
+<a class="" data-mod="06-information-theory" href="06-information-theory.html"><span class="n">06</span>The Information-Theory Toolkit</a>
+<a class="cur" data-mod="07-ngram-language-models" href="07-ngram-language-models.html"><span class="n">07</span>N-gram Language Models &amp; Perplexity</a>
+<a class="" data-mod="08-pos-tagging-syntax" href="08-pos-tagging-syntax.html"><span class="n">08</span>POS Tagging, HMMs &amp; Syntax</a>
+<h4>Neural NLP</h4>
+<a class="" data-mod="09-neural-network-basics" href="09-neural-network-basics.html"><span class="n">09</span>Neural Network Basics</a>
+<a class="" data-mod="10-word2vec" href="10-word2vec.html"><span class="n">10</span>Word Embeddings: word2vec</a>
+<a class="" data-mod="11-negative-sampling-glove" href="11-negative-sampling-glove.html"><span class="n">11</span>Negative Sampling &amp; GloVe</a>
+<a class="" data-mod="12-evaluating-embeddings" href="12-evaluating-embeddings.html"><span class="n">12</span>Evaluating Embeddings &amp; Their Limits</a>
+<a class="" data-mod="13-neural-language-models" href="13-neural-language-models.html"><span class="n">13</span>From N-grams to Neural Language Models</a>
+<a class="" data-mod="14-rnns" href="14-rnns.html"><span class="n">14</span>Recurrent Neural Networks (RNNs)</a>
+<a class="" data-mod="15-seq2seq-attention" href="15-seq2seq-attention.html"><span class="n">15</span>Seq2Seq &amp; Attention</a>
+<a class="" data-mod="16-coreference-resolution" href="16-coreference-resolution.html"><span class="n">16</span>Coreference Resolution</a>
+<a class="" data-mod="17-question-answering" href="17-question-answering.html"><span class="n">17</span>Question Answering Systems</a>
+<a class="" data-mod="18-sentiment-analysis" href="18-sentiment-analysis.html"><span class="n">18</span>Sentiment &amp; Aspect-Based Analysis</a>
+<h4>Revision</h4>
+<a class="" data-mod="19-exam-cheatsheet" href="19-exam-cheatsheet.html"><span class="n">19</span>Exam Cheat-Sheet &amp; Formula Bank</a>
+<h4>On this page</h4><nav class="toc" id="toc"></nav></aside>
+<main><article class="article">
+<div class="crumbs"><a href="../index.html">All topics</a> / Part A · Classical NLP</div>
+<h1>07. N-gram Language Models &amp; Perplexity</h1>
+<p class="lede">Turning counts into probabilities, scoring sentences, perplexity, smoothing and back-off.</p>
+<div class="meta-row"><span class="chip">Part A · Classical NLP</span><span class="chip alt">🎙 Language Lectures 7 &amp; 8</span></div>
+<div class="tldr"><h3>In 30 seconds</h3><ul>
+<li>A <b>language model (LM)</b> is just a <b>probability distribution over word sequences</b>. It estimates how likely a sentence (or next word) is.</li>
+<li>We can't know the <i>true</i> probabilities, so we <b>estimate</b> them from a big corpus by <b>counting</b>.</li>
+<li><b>Markov assumption:</b> the next word depends only on the last few words. That gives <b>unigram / bigram / trigram</b> models.</li>
+<li>Bigram estimate: P(w | prev) = count(prev w) / count(prev).</li>
+<li><b>Perplexity</b> = 2<sup>entropy rate</sup> = P(sentence)<sup>−1/N</sup>: the effective number of choices per word. <b>Lower is better.</b></li>
+<li>Unseen sequences get probability 0, so we <b>smooth</b> (add-one/Laplace, &lt;UNK&gt;) and <b>interpolate / back off</b>.</li>
+</ul></div>
+<h2>What each idea is for</h2>
+<div class="tbl-wrap"><table class="uses">
+<tr><th>Concept</th><th>What it's for</th><th>Where it's used</th></tr>
+<tr><td>Language model</td><td>Gives a probability to any word sequence, so we can pick the most natural one</td><td>Speech recognition, spell correction, translation, autocomplete, LLMs</td></tr>
+<tr><td>Markov assumption / n-grams</td><td>Makes probability estimation feasible by limiting the context</td><td>Keyboard prediction, fast baselines, KenLM in speech systems</td></tr>
+<tr><td>MLE (count ratios)</td><td>Estimates probabilities directly from a corpus</td><td>Every count-based model</td></tr>
+<tr><td>Log probability</td><td>Avoids numeric underflow; turns products into sums</td><td>All LM toolkits and neural losses</td></tr>
+<tr><td>Perplexity</td><td>A single-number measure of LM quality (lower is better)</td><td>Comparing LMs on the same vocabulary and test set</td></tr>
+<tr><td>&lt;UNK&gt;</td><td>Handles out-of-vocabulary words</td><td>Every closed-vocabulary model</td></tr>
+<tr><td>Add-one smoothing</td><td>Stops unseen events from getting zero probability</td><td>Simple baselines, Naive Bayes text classifiers</td></tr>
+<tr><td>Interpolation / back-off</td><td>Combines evidence from different n-gram orders</td><td>Production n-gram LMs (Kneser–Ney)</td></tr>
+<tr><td>Intrinsic vs extrinsic evaluation</td><td>Perplexity vs real-task performance</td><td>Model selection</td></tr>
+<tr><td>SRILM</td><td>A toolkit that trains and queries n-gram LMs at scale</td><td>Speech and MT research</td></tr>
+</table></div>
+
+
+<h2>Why should a computer predict words?</h2>
+<p>Because <b>humans do it constantly</b>. When someone mumbles "I'll be back soon-ish", you hear it correctly instead of "I'll be bassoon-ish", because the first is far more <b>probable</b>. Speech recognition, spelling correction, translation and chatbots all need to know which word sequences are likely.</p>
+<div class="box ex"><span class="lbl">Example: grammar can't decide, probability can</span>
+<p>S1: <i>John went to London in the late afternoon.</i><br>S2: <i>John went in the late afternoon to London.</i><br>Both are grammatical, yet almost the whole class preferred S1. Grammar can't explain that preference, but probability can. A good LM should give S1 the higher probability. <b>Human preference ∝ probability.</b></p></div>
+
+<h2>From conditional entropy to language models</h2>
+<p>In topic 06, H(Y|X) averaged over <i>all</i> values of X. For language we usually care about <b>one specific context</b>, e.g. the uncertainty of the next word after "peanut butter and ___". That's <b>pointwise conditional entropy</b> (one value of X, not the average).</p>
+<div class="formula">surprisal of a word = − log₂ M(w | history)<small>M = our language model (estimated probability distribution)</small></div>
+<p>Where do the probabilities come from? Not by peering into someone's head. We take a large <b>corpus</b> assumed to represent the language, count how often things occur, and treat those counts as estimates of the <b>true probability</b>.</p>
+<div class="box key"><span class="lbl">Key idea</span><p><b>Training a language model = estimating probabilities from a corpus</b>, assuming the corpus is a good enough sample of the language.</p></div>
+
+<h3>From one word to the whole sentence</h3>
+<p>Apply the chain rule to the sequence w₁ … w<sub>N</sub>:</p>
+<div class="formula">total surprisal = − log₂ M(w₁…w<sub>N</sub>) = Σ<sub>i</sub> − log₂ M(w<sub>i</sub> | w₁…w<sub>i−1</sub>)</div>
+<div class="formula">entropy rate (average surprise per word) = H = (1/N) · [ − log₂ M(w₁…w<sub>N</sub>) ]</div>
+
+<h2>Perplexity</h2>
+<div class="formula">PP = 2<sup>H</sup> = M(w₁ … w<sub>N</sub>)<sup>−1/N</sup><small>(take log₂ of both sides to see they're the same)</small></div>
+<div class="box an"><span class="lbl">Analogy: a multiple-choice exam</span>
+<p>Perplexity 4 means the model is, on average, as confused as if it had to choose among <b>4 equally likely words</b> at each step. Perplexity 1 means it knows exactly what's next. A perplexed student is a confused student, so <b>lower perplexity = better model</b> (more confident, closer to the true probabilities).</p></div>
+<p>Entropy and perplexity move together. Entropy is "minimum bits / expected surprise". Perplexity expresses the same thing as an "effective number of choices per word".</p>
+
+<h2>N-gram models and the Markov assumption</h2>
+<p>Conditioning on the <i>entire</i> history is impossible (we'd almost never see the same long history twice). <b>Markov assumption:</b> the probability of a word depends only on a fixed number of recent words.</p>
+<div class="tbl-wrap"><table>
+<tr><th>Model</th><th>Context used</th><th>P(sentence) for "He put the coffee on the table"</th></tr>
+<tr><td>Unigram (n=1)</td><td>none</td><td>P(He)·P(put)·P(the)·P(coffee)·…</td></tr>
+<tr><td>Bigram (n=2)</td><td>1 previous word</td><td>P(He|&lt;s&gt;)·P(put|He)·P(the|put)·P(coffee|the)·…</td></tr>
+<tr><td>Trigram (n=3)</td><td>2 previous words</td><td>…·P(the|He put)·P(coffee|put the)·…</td></tr>
+</table></div>
+<p>&lt;s&gt; and &lt;/s&gt; mark the start and end of a sentence. Why learn n-grams when we have transformers? Because RNNs, LSTMs and transformers all build on these ideas, and once n-grams are clear the rest is much easier.</p>
+
+<h3>Estimating probabilities by counting (maximum likelihood)</h3>
+<div class="formula">P(w<sub>n</sub> | w<sub>n−1</sub>) = C(w<sub>n−1</sub> w<sub>n</sub>) / C(w<sub>n−1</sub>) &nbsp;&nbsp;&nbsp; P(w<sub>n</sub> | w<sub>n−2</sub> w<sub>n−1</sub>) = C(w<sub>n−2</sub> w<sub>n−1</sub> w<sub>n</sub>) / C(w<sub>n−2</sub> w<sub>n−1</sub>)</div>
+<p>This comes from P(x|y) = P(y,x)/P(y). The total-count denominators cancel and we're left with a ratio of counts. With a big corpus you could literally count with <code>grep -c "put the coffee"</code>.</p>
+
+<div class="box ex"><span class="lbl">Extra worked example: a full bigram model by hand (the class corpus is in the Numericals section below)</span>
+<p><b>Training corpus</b> (4 sentences):</p>
+<pre><code>&lt;s&gt; I like tea &lt;/s&gt;
+&lt;s&gt; I like coffee &lt;/s&gt;
+&lt;s&gt; you like tea &lt;/s&gt;
+&lt;s&gt; I drink tea &lt;/s&gt;</code></pre>
+<p><b>Useful counts:</b> C(&lt;s&gt;)=4, C(I)=3, C(like)=3, C(tea)=3 · C(&lt;s&gt; I)=3, C(I like)=2, C(like tea)=2, C(tea &lt;/s&gt;)=3.</p>
+<p><b>Test sentence:</b> "I like tea"</p>
+<div class="tbl-wrap"><table>
+<tr><th>Factor</th><th>Count ratio</th><th>Value</th></tr>
+<tr><td>P(I | &lt;s&gt;)</td><td>3 / 4</td><td>0.75</td></tr>
+<tr><td>P(like | I)</td><td>2 / 3</td><td>0.667</td></tr>
+<tr><td>P(tea | like)</td><td>2 / 3</td><td>0.667</td></tr>
+<tr><td>P(&lt;/s&gt; | tea)</td><td>3 / 3</td><td>1.0</td></tr>
+<tr><th>P(sentence)</th><th colspan="2">0.75 × 0.667 × 0.667 × 1 = <b>0.333</b></th></tr>
+</table></div>
+<p><b>Perplexity.</b> What is N? Count the words, and decide about the end marker:</p>
+<ul>
+<li><b>PPL</b> (count &lt;/s&gt; as a token, N = 3 + 1 = 4): 0.333<sup>−1/4</sup> ≈ <b>1.32</b></li>
+<li><b>PPL1</b> (words only, N = 3): 0.333<sup>−1/3</sup> ≈ <b>1.44</b></li>
+</ul>
+<p>Count only <b>one</b> boundary tag (&lt;/s&gt;), never both. If you know where one sentence ends, you already know where the next begins, so counting &lt;s&gt; too would be redundant. Toolkits like SRILM report both PPL and PPL1.</p>
+<p><b>Unigram version</b> (16 tokens incl. 4 &lt;/s&gt;): P = (3/16)(3/16)(3/16)(4/16) ≈ 0.0016, far lower than the bigram's 0.333, because unigrams ignore context.</p></div>
+
+<div class="box key"><span class="lbl">Why log probabilities?</span>
+<p>Multiply thousands of small probabilities and you get numbers like 0.0000000…3 that <b>underflow</b> (floating-point error). Logs turn products into sums: log(a·b) = log a + log b. Toolkits therefore report <b>logprob</b>. (SRILM uses log base 10: log₁₀ 0.333 = −0.477.)</p></div>
+
+<h2>The zero problem and smoothing</h2>
+<div class="box ex"><span class="lbl">Example: "you drink coffee"</span>
+<p>P(drink | you) = C(you drink)/C(you) = 0/1 = <b>0</b>, so the whole sentence gets probability 0 and perplexity becomes infinite. Is the sentence wrong? No. Our corpus is just small. This is <b>sparsity</b>: real sequences missing from the training data.</p></div>
+
+<h3>1. &lt;UNK&gt; for unknown words</h3>
+<p>Add a special token <code>&lt;UNK&gt;</code> to the vocabulary and map every out-of-vocabulary (OOV) word to it. "Sam I do like <i>linguistics</i>" becomes "Sam I do like &lt;UNK&gt;". The model never sees a truly unknown word again.</p>
+
+<h3>2. Add-one (Laplace) smoothing</h3>
+<p>Pretend every possible event was seen once more than it really was. To keep probabilities summing to 1, add the vocabulary size V to the denominator:</p>
+<div class="formula">P<sub>add-1</sub>(w) = (C(w) + 1) / (N + V) &nbsp;&nbsp;&nbsp; P<sub>add-1</sub>(w | prev) = (C(prev w) + 1) / (C(prev) + V)</div>
+<div class="box an"><span class="lbl">Analogy: the fruit bag</span><p>Your bag has 2 bananas and 2 apples, and someone asks for an orange. To give the orange a fair (small) chance without changing the overall proportions, you add one of <i>every</i> fruit, not just one orange. That's why we add 1 to every count and V to the total.</p></div>
+<div class="box ex"><span class="lbl">Worked example: add-one on our corpus</span>
+<p>V = 7 types {I, like, tea, coffee, you, drink, &lt;/s&gt;}.</p>
+<p><b>"you drink coffee"</b>: (1+1)/(4+7) × (0+1)/(1+7) × (0+1)/(1+7) × (1+1)/(1+7) = 0.182 × 0.125 × 0.125 × 0.25 ≈ <b>0.00071</b>. Small but not zero.</p>
+<p><b>"I like tea"</b> now: (3+1)/(4+7) × (2+1)/(3+7) × (2+1)/(3+7) × (3+1)/(3+7) ≈ <b>0.013</b> (was 0.333).</p>
+<p>Smoothing <b>steals probability mass</b> from seen events and gives it to unseen ones. Add-one steals a lot, which is why better methods exist: absolute discounting, Good–Turing, Witten–Bell, Kneser–Ney.</p></div>
+
+<h3>3. Interpolation and back-off</h3>
+<p><b>Interpolation:</b> mix all orders with weights that sum to 1:</p>
+<div class="formula">P̂(w | u, v) = λ₃·P(w | u, v) + λ₂·P(w | v) + λ₁·P(w) , &nbsp; λ₁+λ₂+λ₃ = 1</div>
+<p>Choose the λs on a held-out (dev) set, as usual in ML: train / dev / test.</p>
+<p><b>Back-off:</b> if the trigram was never seen, fall back to the bigram, then to the unigram. Estimate <i>something</i>, never a blank zero.</p>
+<div class="box exam"><span class="lbl">Problem with back-off (asked in class)</span>
+<p>A zero is sometimes <b>meaningful</b>. "John eats <i>blue</i>" or "I <i>eats</i>" are rare because they're nonsense or ungrammatical, not because the corpus is small. Backing off to the unigram P(blue) gives them a respectable score anyway. <b>Unseen ≠ merely sparse.</b> Sometimes the data is telling you the sequence is improbable.</p></div>
+
+<h2>Evaluating language models</h2>
+<div class="two">
+<div class="card"><h4>Intrinsic</h4><p><b>Likelihood</b> P(test | M) (higher is better), <b>log-likelihood</b> (avoids underflow), <b>perplexity</b> (lower is better).</p></div>
+<div class="card"><h4>Extrinsic</h4><p>Plug the LM into a task: the word-order preference task, speech recognition, machine translation. Does it make the choices humans make?</p></div>
+</div>
+<div class="box key"><span class="lbl">Golden rules</span><ul>
+<li><b>Never train on the test set.</b> The model would have "seen the answers", and its perplexity would be artificially low. That's cheating.</li>
+<li>Typically unigram PP &gt; bigram PP &gt; trigram PP (e.g. Jurafsky &amp; Martin's Wall Street Journal numbers), because more context means fewer choices.</li>
+<li><b>Only compare perplexities of models with the same vocabulary.</b> Comparing two pre-trained LMs with different vocabularies is apples vs oranges.</li>
+<li>N-grams work well when the test text resembles the training text. In real life it often doesn't, so we need models that <b>generalise</b> and handle unseen words.</li>
+</ul></div>
+
+<h2>Another way to picture an LM: finite-state automata</h2>
+<p>Words as nodes, transitions as arrows labelled with probabilities. P(he → is) is just the weight on that arrow. This view comes back with HMMs in the next topic. Context-free grammars and dependency trees are yet more ways to represent language structure.</p>
+
+<h2>Hands-on: SRILM toolkit</h2>
+<pre><code># 1) train a bigram LM (counts + ARPA-format model) with add-one smoothing
+ngram-count -text train.txt -order 2 -write train.bigram.count \
+            -lm train.bigram.lm -addsmooth 1 -unk
+
+# 2) score test sentences: per-word probabilities, logprob, ppl, ppl1
+ngram -lm train.bigram.lm -ppl test.txt -debug 2 -unk</code></pre>
+<p>In class, every per-word probability, logprob, PPL and PPL1 from SRILM matched the hand calculations exactly. The model isn't a black box: it's counting and dividing. The follow-up in-class activity repeated this on the <b>Brown corpus</b> (a mixed-genre corpus of news, religion, romance and more, with POS tags).</p>
+
+<div class="box exam"><span class="lbl">Exam tip</span>
+<p>Expect hand calculations: bigram/unigram probabilities from a toy corpus, sentence probability via the chain rule, log-prob, perplexity (and which N to use), add-one smoothing with V, and short answers on back-off vs interpolation and why the test set must stay unseen.</p></div>
+<div class="box try"><span class="lbl">Try it</span>
+<p>Using the corpus above, compute P("you like coffee") with the bigram model. (Answer: 1/4 × 1 × 1/3 × 1 ≈ 0.083.)</p></div>
+<h2>From the lecture slides</h2>
+<h3>Markov chain as a weighted finite-state machine</h3>
+<p>States are words (<i>He, cool, is</i>), arcs are transition probabilities, and a start distribution π = [0.7, 0.1, 0.2] gives the probability of starting with He, cool or is.</p>
+<div class="box ex"><span class="lbl">Slide example: P(is he cool)</span>
+<p>π(is) × P(he | is) × P(cool | he) = 0.2 × 0.5 × 0.3 = <b>0.03</b>. (In class: P(he → is) was read off the arc as 0.6.)</p></div>
+<h3>Perplexity across n-gram orders (slide table, WSJ)</h3>
+<div class="tbl-wrap"><table><tr><th></th><th>Unigram</th><th>Bigram</th><th>Trigram</th></tr><tr><td>Perplexity</td><td>962</td><td>170</td><td>109</td></tr></table></div>
+<p>More context means fewer choices, so lower perplexity. These are only comparable because the models use <b>identical vocabularies</b>.</p>
+<h3>The problem of zeros (Berkeley Restaurant Project, 9,222 sentences)</h3>
+<p>In the bigram count table, most cells are 0 even though counts like <i>i want</i> = 827, <i>want to</i> = 608, <i>to eat</i> = 686, <i>chinese food</i> = 82 are large. Smoothing "steals probability mass to generalise better".</p>
+<h3>Katz back-off (1987)</h3>
+<div class="formula">P̂(wᵢ | wᵢ₋₂wᵢ₋₁) = P(wᵢ|wᵢ₋₂wᵢ₋₁) if C(wᵢ₋₂wᵢ₋₁wᵢ) &gt; 0 ; &nbsp; α₁P(wᵢ|wᵢ₋₁) if C(trigram) = 0 and C(wᵢ₋₁wᵢ) &gt; 0 ; &nbsp; α₂P(wᵢ) otherwise<small>non-linear: back off through progressively shorter histories (α's keep it a valid distribution)</small></div>
+<p><b>Best approach in practice</b> (slide): simple linear interpolation + a smoothed probability for OOV words, with λ tuned on a <b>dev set (~10–20%)</b> held out from training, then reported once on test.</p>
+<h3>SRILM file formats</h3>
+<ul><li><b>Count file</b>: each n-gram with its count (e.g. <code>&lt;s&gt; Sam 3</code>, <code>Sam I 3</code>, <code>I am 2</code>).</li>
+<li><b>LM (ARPA) file</b>: log₁₀ probability, the n-gram, and the log₁₀ <b>back-off weight</b>.</li>
+<li><b>Test output</b>: total logprob (base 10), <b>ppl</b> with N = #words + #&lt;/s&gt;, <b>ppl1</b> with N = #words.</li></ul>
+<h3>Appendix: Shannon's noisy channel model</h3>
+<div class="flow"><span>message W</span><b>→</b><span>encoder</span><b>→ X →</b><span>channel p(y|x)</span><b>→ Y →</b><span>decoder</span><b>→</b><span>Ŵ</span></div>
+<p>There's a duality between <b>compression</b> (remove all redundancy) and <b>transmission accuracy</b> (add controlled redundancy). Channel capacity is reached when the input distribution p(X) maximises I(X;Y).</p>
+<div class="formula">Î = argmax<sub>i</sub> p(i | o) = argmax<sub>i</sub> p(i) p(o | i) / p(o) = argmax<sub>i</sub> p(i) · p(o | i)<small>p(i) = language model, p(o|i) = channel probability. Used in machine translation, OCR, speech recognition.</small></div>
+<p>In linguistics we can't control the encoding, so we just decode the most likely input. The LM is what makes "I will be back soonish" win over "bassoon dish".</p>
+<h2 id="numericals">Numericals</h2>
+<h3 class="numh"><span class="tag-class">From class</span> The in-class activity (exact slide data)</h3>
+<pre><code>&lt;s&gt; I am Sam &lt;/s&gt;
+&lt;s&gt; Sam I am &lt;/s&gt;
+&lt;s&gt; Sam I like &lt;/s&gt;
+&lt;s&gt; Sam I do like &lt;/s&gt;
+&lt;s&gt; do I like Sam &lt;/s&gt;</code></pre>
+<p><b>Questions on the slide:</b> using (1) a bigram LM and (2) a unigram LM, which sentence is better (higher probability)? (a) Sam I do I like (b) Sam I am (c) Sam I do like linguistics.</p>
+<p><b>Counts:</b> 17 words, Sam 5, I 5, like 3, am 2, do 2, &lt;/s&gt; 5 (22 tokens incl. &lt;/s&gt;).<br>
+<b>Bigrams:</b> &lt;s&gt; Sam 3 · &lt;s&gt; I 1 · &lt;s&gt; do 1 · Sam I 3 · Sam &lt;/s&gt; 2 · I am 2 · I like 2 · I do 1 · am Sam 1 · am &lt;/s&gt; 1 · do like 1 · do I 1 · like &lt;/s&gt; 2 · like Sam 1.</p>
+
+<div class="box ex"><span class="lbl">C1(a). Bigram: "Sam I do I like"</span>
+<p>P(Sam|&lt;s&gt;) 3/5 · P(I|Sam) 3/5 · P(do|I) 1/5 · P(I|do) 1/2 · P(like|I) 2/5 · P(&lt;/s&gt;|like) 2/3<br>
+= 0.6 × 0.6 × 0.2 × 0.5 × 0.4 × 0.667 = <b>0.0096</b><br>
+SRILM: logprob = <b>−2.01773</b>, ppl (N = 6) = <b>2.16914</b>, ppl1 (N = 5) = <b>2.53248</b></p></div>
+<div class="box ex"><span class="lbl">C1(b). Bigram: "Sam I am"</span>
+<p>P(Sam|&lt;s&gt;) 0.6 · P(I|Sam) 0.6 · P(am|I) 2/5 = 0.4 · P(&lt;/s&gt;|am) 1/2 = 0.5 → <b>0.072</b><br>
+SRILM: logprob = <b>−1.14267</b>, ppl = <b>1.93049</b>, ppl1 = <b>2.40375</b></p></div>
+<div class="box ex"><span class="lbl">C1(c). Bigram: "Sam I do like linguistics"</span>
+<p>C(like linguistics) = 0, so P = <b>0</b> (OOV word). SRILM reports it as a zeroprob/OOV and leaves it out of logprob.<br>
+<b>Answer to Q1:</b> (b) "Sam I am" is best (0.072 &gt; 0.0096 &gt; 0).</p></div>
+<div class="box ex"><span class="lbl">C1(d). The whole test file (SRILM summary line)</span>
+<p>2 sentences, 8 words: logprob = −2.01773 + (−1.14267) = <b>−3.1604</b>; ppl = 10<sup>3.1604/10</sup> = <b>2.07033</b>; ppl1 = 10<sup>3.1604/8</sup> = <b>2.48342</b>.</p></div>
+<div class="box ex"><span class="lbl">C2. Unigram (denominator 22)</span>
+<p>(a) (5/22)(5/22)(2/22)(5/22)(3/22)(5/22) ≈ 3.3 × 10⁻⁵ → logprob <b>−4.4805</b>, ppl <b>5.58</b>, ppl1 <b>7.87</b><br>
+(b) (5/22)(5/22)(2/22)(5/22) ≈ 0.00107 → logprob −2.972, ppl 5.53, ppl1 9.79<br>
+(c) P(linguistics) = 0, so 0. <b>Answer to Q2:</b> (b) again.</p></div>
+<div class="box ex"><span class="lbl">C3. Fixing the OOV: &lt;UNK&gt; + add-one (unigram)</span>
+<p>V = 6 types (Sam, I, am, like, do, &lt;/s&gt;) + &lt;UNK&gt; = 7. P(w) = (C(w)+1)/(22+7).<br>
+Sam 6/29 = 0.207 · I 6/29 · do 3/29 = 0.103 · like 4/29 = 0.138 · &lt;UNK&gt; 1/29 = <b>0.034</b> · &lt;/s&gt; 6/29<br>
+P("Sam I do like &lt;UNK&gt;") ≈ 4.36 × 10⁻⁶ → logprob <b>−5.36</b>, ppl <b>7.82</b>, ppl1 <b>11.81</b> (matches SRILM with <code>-addsmooth 1</code>)</p></div>
+
+<h3 class="numh"><span class="tag-prac">Practice</span> Same corpus, same level</h3>
+<details class="sol"><summary class="q">P1. Bigram probability of "I am Sam". logprob, ppl, ppl1?</summary>
+<p>P(I|&lt;s&gt;) 1/5 × P(am|I) 2/5 × P(Sam|am) 1/2 × P(&lt;/s&gt;|Sam) 2/5 = <b>0.016</b>. log₁₀ = −1.796, ppl (N = 4) = 2.81, ppl1 (N = 3) = 3.97.</p></details>
+<details class="sol"><summary class="q">P2. Bigram "I like Sam" vs "do I like": which is better?</summary>
+<p>"I like Sam" = 0.2 × 0.4 × 1/3 × 0.4 = <b>0.0107</b>. "do I like" = 0.2 × 0.5 × 0.4 × 2/3 = <b>0.0267</b>. So "do I like" is better.</p></details>
+<details class="sol"><summary class="q">P3. Bigram "Sam I like Sam". Compare with the unigram model.</summary>
+<p>Bigram: 0.6 × 0.6 × 0.4 × 1/3 × 0.4 = <b>0.0192</b> (ppl 2.20). Unigram: (5/22)(5/22)(3/22)(5/22)(5/22) ≈ 0.00036 (ppl 4.87). The bigram uses context, so it's far more confident.</p></details>
+<details class="sol"><summary class="q">P4. "Sam am" contains an unseen bigram. Bigram MLE? Add-one bigram with V = 6?</summary>
+<p>MLE: P(am|Sam) = 0/5, so P = 0. Add-one: (3+1)/(5+6) × (0+1)/(5+6) × (1+1)/(2+6) = 0.364 × 0.091 × 0.25 ≈ <b>0.0083</b>.</p></details>
+<details class="sol"><summary class="q">P5. Interpolation with λ₃ = 0.6, λ₂ = 0.3, λ₁ = 0.1: P(like | do I)? (Trigram C(do I like) = 1, C(do I) = 1.)</summary>
+<p>Trigram = 1/1 = 1, bigram P(like|I) = 0.4, unigram P(like) = 3/22. So 0.6(1) + 0.3(0.4) + 0.1(0.136) ≈ <b>0.734</b>.</p></details>
+<details class="sol"><summary class="q">P6. Using the Markov-chain slide, which is more probable as a start: "He …" or "is …"? What is π(cool)?</summary>
+<p>π(He) = 0.7 &gt; π(is) = 0.2. π(cool) = 0.1. (π must sum to 1: 0.7 + 0.1 + 0.2 = 1.)</p></details>
+
+<label class="done-row"><input type="checkbox" id="doneBox"> I've finished this topic</label>
+<div class="pager"><a class="prev" href="06-information-theory.html"><small>← Previous</small>The Information-Theory Toolkit</a><a class="next" href="08-pos-tagging-syntax.html"><small>Next →</small>POS Tagging, HMMs &amp; Syntax</a></div>
+</article></main>
+</div>
+<footer class="foot">FoVL Notes · written from the course lecture recordings (Foundations of Vision &amp; Language, IIT Jodhpur) · for revision, not a substitute for the slides.</footer>
+</body></html>

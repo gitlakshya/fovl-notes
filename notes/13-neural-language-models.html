@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>From N-grams to Neural Language Models · FoVL Notes</title>
+<meta name="description" content="Simple, example-first notes for Foundations of Vision and Language (FoVL) — language & NLP part.">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/style.css">
+<script src="../assets/app.js"></script>
+</head>
+<body data-page="13-neural-language-models">
+<header class="topbar"><div class="in"><button class="btn menu-btn" id="menuBtn" aria-label="Open menu">☰ Topics</button><a class="brand" href="../index.html">FoVL <span>Notes</span></a><div class="spacer"></div><a class="btn hide-sm" href="../notes/19-exam-cheatsheet.html">Cheat-sheet</a><button class="btn" id="themeBtn" aria-label="Toggle dark mode">☾ Theme</button></div><div class="progress"></div></header>
+<div class="layout">
+<aside class="side">
+<h4>Language, Information &amp; Classical NLP</h4>
+<a class="" data-mod="01-what-is-language" href="01-what-is-language.html"><span class="n">01</span>What is Language?</a>
+<a class="" data-mod="02-can-machines-understand" href="02-can-machines-understand.html"><span class="n">02</span>Can Machines Understand Language?</a>
+<a class="" data-mod="03-nlp-nlu-cl" href="03-nlp-nlu-cl.html"><span class="n">03</span>NLP vs NLU vs Computational Linguistics</a>
+<a class="" data-mod="04-zipfs-law" href="04-zipfs-law.html"><span class="n">04</span>Zipf&#x27;s Law: The Shape of Language</a>
+<a class="" data-mod="05-shannon-redundancy" href="05-shannon-redundancy.html"><span class="n">05</span>Shannon, Redundancy &amp; Entropy</a>
+<a class="" data-mod="06-information-theory" href="06-information-theory.html"><span class="n">06</span>The Information-Theory Toolkit</a>
+<a class="" data-mod="07-ngram-language-models" href="07-ngram-language-models.html"><span class="n">07</span>N-gram Language Models &amp; Perplexity</a>
+<a class="" data-mod="08-pos-tagging-syntax" href="08-pos-tagging-syntax.html"><span class="n">08</span>POS Tagging, HMMs &amp; Syntax</a>
+<h4>Neural NLP</h4>
+<a class="" data-mod="09-neural-network-basics" href="09-neural-network-basics.html"><span class="n">09</span>Neural Network Basics</a>
+<a class="" data-mod="10-word2vec" href="10-word2vec.html"><span class="n">10</span>Word Embeddings: word2vec</a>
+<a class="" data-mod="11-negative-sampling-glove" href="11-negative-sampling-glove.html"><span class="n">11</span>Negative Sampling &amp; GloVe</a>
+<a class="" data-mod="12-evaluating-embeddings" href="12-evaluating-embeddings.html"><span class="n">12</span>Evaluating Embeddings &amp; Their Limits</a>
+<a class="cur" data-mod="13-neural-language-models" href="13-neural-language-models.html"><span class="n">13</span>From N-grams to Neural Language Models</a>
+<a class="" data-mod="14-rnns" href="14-rnns.html"><span class="n">14</span>Recurrent Neural Networks (RNNs)</a>
+<a class="" data-mod="15-seq2seq-attention" href="15-seq2seq-attention.html"><span class="n">15</span>Seq2Seq &amp; Attention</a>
+<a class="" data-mod="16-coreference-resolution" href="16-coreference-resolution.html"><span class="n">16</span>Coreference Resolution</a>
+<a class="" data-mod="17-question-answering" href="17-question-answering.html"><span class="n">17</span>Question Answering Systems</a>
+<a class="" data-mod="18-sentiment-analysis" href="18-sentiment-analysis.html"><span class="n">18</span>Sentiment &amp; Aspect-Based Analysis</a>
+<h4>Revision</h4>
+<a class="" data-mod="19-exam-cheatsheet" href="19-exam-cheatsheet.html"><span class="n">19</span>Exam Cheat-Sheet &amp; Formula Bank</a>
+<h4>On this page</h4><nav class="toc" id="toc"></nav></aside>
+<main><article class="article">
+<div class="crumbs"><a href="../index.html">All topics</a> / Part B · Neural NLP</div>
+<h1>13. From N-grams to Neural Language Models</h1>
+<p class="lede">Count-based LMs, text generation, and the fixed-window neural LM.</p>
+<div class="meta-row"><span class="chip">Part B · Neural NLP</span><span class="chip alt">🎙 Neural NLP Lectures 4–5 (19 &amp; 23 Oct)</span></div>
+<div class="tldr"><h3>In 30 seconds</h3><ul>
+<li>A language model <b>predicts the next word</b>. Do it repeatedly and you <b>generate text</b>.</li>
+<li><b>Count-based n-gram LM:</b> P(w | last n−1 words) = count ratio. Simple, but it ignores older context, suffers from sparsity, and needs huge storage.</li>
+<li><b>Fixed-window neural LM</b> (Bengio et al., 2003): concatenate the embeddings of the last few words → hidden layer → softmax over the vocabulary. No sparsity problem, no n-gram tables.</li>
+<li>Its weaknesses: the window is always too small, a bigger window means a bigger W, and each position has <b>its own weights</b> (no sharing). That motivates RNNs.</li>
+</ul></div>
+<h2>What each idea is for</h2>
+<div class="tbl-wrap"><table class="uses">
+<tr><th>Concept</th><th>What it's for</th><th>Where it's used</th></tr>
+<tr><td>Next-word prediction</td><td>The training task that teaches models language</td><td>Autocomplete, GPT-style pre-training</td></tr>
+<tr><td>Count-based LM</td><td>A simple, fast, interpretable baseline</td><td>Keyboards, speech decoders, quick text generation</td></tr>
+<tr><td>Sampling to generate</td><td>Produces new text one word at a time</td><td>Chatbots, story generation</td></tr>
+<tr><td>Fixed-window neural LM</td><td>Removes sparsity by using embeddings</td><td>A historical step towards RNNs and transformers; window-based taggers</td></tr>
+<tr><td>Softmax over the vocabulary</td><td>Picks the next word from the whole vocabulary</td><td>Output layer of every LM</td></tr>
+<tr><td>Parameter sharing</td><td>Learns a fact once and reuses it at every position</td><td>RNNs, CNNs, transformers</td></tr>
+</table></div>
+
+
+<h2>Language modelling = next-word prediction</h2>
+<div class="formula">P( x<sup>(t+1)</sup> | x<sup>(t)</sup>, …, x<sup>(1)</sup> )</div>
+<p>Phone keyboards, search autocomplete and chatbots all do this.</p>
+
+<h2>Count-based (n-gram) language models, revisited</h2>
+<p>Before deep learning: collect statistics about how often different n-grams occur and use them to predict. Under the <b>Markov assumption</b>, x<sup>(t+1)</sup> depends only on the previous n−1 words.</p>
+<div class="box ex"><span class="lbl">Worked example: a 4-gram model</span>
+<p>Sentence: <i>"As the proctor started the clock, the students opened their ___"</i>. A 4-gram model <b>throws away</b> everything except the last 3 words:</p>
+<div class="formula">P(w | students opened their) = count(students opened their w) / count(students opened their)</div>
+<p>Suppose in the corpus "students opened their" occurred <b>1000</b> times, followed by "books" <b>400</b> times and "exams" <b>100</b> times:</p>
+<div class="formula">P(books | …) = 400/1000 = 0.4 &nbsp;&nbsp;&nbsp; P(exams | …) = 100/1000 = 0.1</div>
+<p>The model predicts <b>books</b>. But the discarded word <b>proctor</b> tells us it's an exam, so <i>exams</i> or <i>answer sheets</i> would fit better. <b>Lesson: ignoring context hurts.</b></p></div>
+
+<h3>Problems with n-gram LMs</h3>
+<ul>
+<li><b>Sparsity (numerator):</b> "students opened their <i>petri-dishes</i>" never seen → probability 0 → needs smoothing.</li>
+<li><b>Sparsity (denominator):</b> "students opened their" never seen → can't compute at all → back off to "opened their".</li>
+<li><b>Storage:</b> you have to store counts for every n-gram, and that grows with corpus size and n. Increasing n makes sparsity worse.</li>
+</ul>
+
+<h3>Generating text with an n-gram model</h3>
+<div class="box ex"><span class="lbl">Example: trigram model trained on ~1.7M words of business/financial news</span>
+<p>Start with "today the" and look at the next-word distribution: <i>company</i> 0.153, <i>bank</i> 0.153, <i>price</i> 0.077, <i>italian</i> 0.039, <i>emirate</i> 0.039, …<br>
+<b>Sample</b> one (say "price"), append it, condition on "the price", sample again, and so on:</p>
+<pre><code>today the price of gold per ton , while production of shoe lasts and shoe industry , the bank intervened just after it considered and rejected an imf demand …</code></pre>
+<p>Surprisingly grammatical in places, but <b>incoherent</b> overall. More data and a larger n help somewhat.</p></div>
+<div class="box an"><span class="lbl">Analogy: a bag of words</span><p>Think of the corpus as a big bag of word slips: "cat" ×5, "orange" ×6, and so on. Probability = how likely you are to pull a given slip out. Counting is just measuring the bag.</p></div>
+
+<h2>A neural language model</h2>
+<p>We already know how to build a neural network (topic 09) and how to look up word vectors (topic 10). So: feed the context words in, multiply by weights, softmax over the vocabulary, and pick the next word.</p>
+<div class="box ex"><span class="lbl">Worked example: a 4-word vocabulary</span>
+<p>Vocabulary: <b>books, houses, lamps, stamps</b>. The context ("students opened their") is turned into a hidden vector x (3-D here; often 100–300-D in practice). The output weight matrix is 4 × 3 (vocabulary × hidden size), so W x gives 4 scores:</p>
+<div class="formula">W·x = [1.8, −2.2, 2.9, −0.3] &nbsp; → softmax → &nbsp; [0.24, 0.004, 0.73, 0.03]</div>
+<p>Prediction: <b>lamps</b> (0.73). The gold answer was <b>books</b>, so the loss = −log 0.24 ≈ 1.43. Back-propagate the error and update the weights, which nudges P(books) up next time.</p></div>
+<div class="box key"><span class="lbl">One recipe, many tasks</span><p>Change only <b>what goes in</b> and <b>what you compare against</b>. For sentiment analysis, the "vocabulary" of outputs is just {positive, negative}. For translation, the input is a sentence in language A and the target is the sentence in language B. Once the input/output setup is clear, you can adapt a neural network to almost any task.</p></div>
+
+<h3>The fixed-window neural LM (Bengio et al., 2000/2003)</h3>
+<figure class="diagram"><div class="flow"><span>words x<sup>(1)</sup>…x<sup>(4)</sup><br><small>"the students opened their"</small></span><b>→</b><span>embeddings, concatenated<br><small>e = [e<sup>(1)</sup>; e<sup>(2)</sup>; e<sup>(3)</sup>; e<sup>(4)</sup>]</small></span><b>→</b><span>hidden layer<br><small>h = f(W e + b₁)</small></span><b>→</b><span>output<br><small>ŷ = softmax(U h + b₂) ∈ ℝ<sup>|V|</sup></small></span></div>
+<figcaption>Read ŷ as a probability for every vocabulary word: books? laptops? exams? zoo?</figcaption></figure>
+<p>The same window idea works for tagging: to label "Paris" as a LOCATION in "museums in <b>Paris</b> are amazing", feed in the window around it.</p>
+<div class="two">
+<div class="card"><h4>✔ Improvements over n-grams</h4><p>No sparsity problem (every word has an embedding, so similar contexts share strength). No need to store every observed n-gram.</p></div>
+<div class="card"><h4>✘ Remaining problems</h4><p>The window is <b>too small</b>. Enlarging it enlarges W. And x<sup>(1)</sup>, x<sup>(2)</sup>… are multiplied by <b>completely different</b> parts of W: <b>no parameter sharing, no symmetry</b>.</p></div>
+</div>
+<div class="box ex"><span class="lbl">Why "no parameter sharing" is bad</span>
+<p>"The <b>students</b> opened their…" vs "Yesterday the <b>students</b> opened their…". The word "students" sits at position 2 in one and position 3 in the other, so it hits <b>different weights</b>. The model has to learn the same fact about "students" separately for each position. That wastes data and capacity and generalises poorly.</p></div>
+<p><b>What we need:</b> an architecture that can read <b>any length of input</b> and reuses the <b>same weights</b> at every position. That's the RNN (next topic).</p>
+
+<h2>Hands-on: an n-gram LM in PyTorch</h2>
+<ol class="steps">
+<li>Load a real dataset through PyTorch/torchtext/datasets (e.g. IMDb, WikiText) instead of a hand-made list.</li>
+<li>Tokenize, build the vocabulary, convert to tensors, split train/test.</li>
+<li>Model: embedding → linear → softmax; train to predict the next word from the previous n−1 words.</li>
+<li>Report accuracy (correct predictions / total) and <b>generate</b> a paragraph: feed in "I like", take the most probable word, append it, repeat 50 times.</li>
+</ol>
+<div class="box ex"><span class="lbl">What students saw</span><p>Generated text like "my friend is loud guitar loud guitar loud guitar…". <b>Repetition</b> was a classic problem in pre-transformer models (the instructor recalled RNN outputs like "I do not know" or "thank you thank you…"). A model can only output words in its vocabulary, and a larger n (more context) improves fluency. Transformers changed things because they <b>scale</b> with more data. Long-document generation is still hard today.</p></div>
+
+<div class="box exam"><span class="lbl">Exam tip</span>
+<p>Compute an n-gram probability from counts, list the problems (context, sparsity, storage), write the fixed-window neural LM equations, and explain "no parameter sharing" with an example.</p></div>
+<h2>From the lecture slides</h2>
+<ul>
+<li><b>An LM assigns a probability to text:</b> P(x⁽¹⁾…x⁽ᵀ⁾) = Π<sub>t</sub> P(x⁽ᵗ⁾ | x⁽ᵗ⁻¹⁾…x⁽¹⁾), the chain rule. LMs are a benchmark task and a sub-component of predictive typing, speech and handwriting recognition, spelling/grammar correction, authorship identification, MT, summarisation and dialogue. "ChatGPT is an LM!"</li>
+<li><b>What next-word prediction can teach</b> (slide): trivia ("Stanford University is located in ___, California"), syntax ("I put ___ fork down"), coreference ("…checking for traffic over ___ shoulder"), lexical semantics ("fish, turtles, seals, and ___"), sentiment ("The movie was ___"), reasoning (Iroh/Zuko), arithmetic (1, 1, 2, 3, 5, 8, 13, 21, ___).</li>
+<li><b>n-gram definitions:</b> unigrams "the", "students"…; bigrams "the students", "students opened"…; trigrams "the students opened"…; 4-gram "the students opened their". In practice n can't be much bigger than 5.</li>
+<li><b>Ideal LM distribution:</b> smooth, fine-grained, and able to distinguish between many reasonable next words. The trigram model's "company 0.153, bank 0.153" shows coarse granularity.</li>
+<li><b>Composition functions</b> (turning a prefix of word embeddings into one vector): element-wise sum, concatenation, feed-forward network, CNN, RNN, transformer.</li>
+<li><b>Each row of W</b> stores the weights that score how compatible the prefix is with one output word. That's why W has shape (vocab × input dim) = 4 × 3.</li>
+</ul>
+<h2 id="numericals">Numericals</h2>
+<h3 class="numh"><span class="tag-class">From class</span> Exact slide numbers</h3>
+<div class="box ex"><span class="lbl">C1. 4-gram counting</span>
+<p>"students opened their" = 1000, "…books" = 400, "…exams" = 100. P(books | students opened their) = <b>0.4</b>, P(exams | …) = <b>0.1</b>. (Should we have discarded "proctor"?)</p></div>
+<div class="box ex"><span class="lbl">C2. Trigram generation distributions (Reuters, 1.7M words)</span>
+<p>"today the" → company 0.153, bank 0.153, price 0.077, italian 0.039, emirate 0.039 → sample <i>price</i><br>
+"the price" → of 0.308, for 0.050, it 0.046, to 0.046, is 0.031 → sample <i>of</i><br>
+"price of" → the 0.072, 18 0.043, oil 0.043, its 0.036, gold 0.018 → sample <i>gold</i> → "today the price of gold per ton, while production of shoe lasts…"</p></div>
+<div class="box ex"><span class="lbl">C3. Neural output layer (slides 19–23)</span>
+<p>Vocabulary: books, houses, lamps, stamps. Target distribution &lt;0.6, 0.2, 0.1, 0.1&gt;. Prefix vector <b>x = &lt;−2.3, 0.9, 5.4&gt;</b>.</p>
+<div class="formula">W = [[1.2, −0.3, 0.9], [0.2, 0.4, −2.2], [8.9, −1.9, 6.5], [4.5, 2.2, −0.1]]</div>
+<p>Row 1: 1.2(−2.3) + (−0.3)(0.9) + 0.9(5.4) = −2.76 − 0.27 + 4.86 = <b>1.8</b>. Likewise Wx = <b>&lt;1.8, −11.9, 12.9, −8.9&gt;</b>.<br>
+The slide then uses Wx = &lt;1.8, −1.9, 2.9, −0.9&gt; to show softmax(Wx) = <b>&lt;0.24, 0.006, 0.73, 0.02&gt;</b>, so "lamps" is predicted, which doesn't match the target (books 0.6). The loss −log 0.24 drives the update.</p></div>
+<div class="box ex"><span class="lbl">C4. Fixed-window model dimensions</span>
+<p>Input: 4 one-hot words → concatenated embeddings e = [e⁽¹⁾; e⁽²⁾; e⁽³⁾; e⁽⁴⁾] → h = f(We + b₁) → ŷ = softmax(Uh + b₂).</p></div>
+
+<h3 class="numh"><span class="tag-prac">Practice</span> Same level</h3>
+<details class="sol"><summary class="q">P1. Compute rows 2 and 3 of Wx from the slide's W and x.</summary>
+<p>Row 2: 0.2(−2.3) + 0.4(0.9) + (−2.2)(5.4) = −0.46 + 0.36 − 11.88 = <b>−11.98 ≈ −11.9</b>. Row 3: 8.9(−2.3) + (−1.9)(0.9) + 6.5(5.4) = −20.47 − 1.71 + 35.1 = <b>12.92 ≈ 12.9</b>.</p></details>
+<details class="sol"><summary class="q">P2. Row 4 of Wx, and softmax of &lt;1.8, −1.9, 2.9, −0.9&gt;.</summary>
+<p>Row 4: 4.5(−2.3) + 2.2(0.9) + (−0.1)(5.4) = −10.35 + 1.98 − 0.54 = <b>−8.91</b>. Softmax: e^x = 6.05, 0.15, 18.17, 0.41 (sum 24.78) → <b>&lt;0.24, 0.006, 0.73, 0.016&gt;</b>.</p></details>
+<details class="sol"><summary class="q">P3. Using C2, what is the probability of generating "today the price of gold" given "today the"?</summary>
+<p>P(price|today the) × P(of|the price) × P(gold|price of) = 0.077 × 0.308 × 0.018 ≈ <b>0.00043</b>.</p></details>
+<details class="sol"><summary class="q">P4. "the price of" occurs 500 times, followed by gold 150, oil 100. P(gold), P(oil)?</summary>
+<p>0.30 and 0.20.</p></details>
+<details class="sol"><summary class="q">P5. Fixed window of 4 words, 300-d embeddings, hidden 500, vocabulary 10,000. Size of W and U?</summary>
+<p>W: 1,200 × 500 = <b>600,000</b>. U: 500 × 10,000 = <b>5,000,000</b>. Doubling the window to 8 doubles W.</p></details>
+
+<label class="done-row"><input type="checkbox" id="doneBox"> I've finished this topic</label>
+<div class="pager"><a class="prev" href="12-evaluating-embeddings.html"><small>← Previous</small>Evaluating Embeddings &amp; Their Limits</a><a class="next" href="14-rnns.html"><small>Next →</small>Recurrent Neural Networks (RNNs)</a></div>
+</article></main>
+</div>
+<footer class="foot">FoVL Notes · written from the course lecture recordings (Foundations of Vision &amp; Language, IIT Jodhpur) · for revision, not a substitute for the slides.</footer>
+</body></html>

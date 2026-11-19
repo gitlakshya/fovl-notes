@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Question Answering Systems · FoVL Notes</title>
+<meta name="description" content="Simple, example-first notes for Foundations of Vision and Language (FoVL) — language & NLP part.">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/style.css">
+<script src="../assets/app.js"></script>
+</head>
+<body data-page="17-question-answering">
+<header class="topbar"><div class="in"><button class="btn menu-btn" id="menuBtn" aria-label="Open menu">☰ Topics</button><a class="brand" href="../index.html">FoVL <span>Notes</span></a><div class="spacer"></div><a class="btn hide-sm" href="../notes/19-exam-cheatsheet.html">Cheat-sheet</a><button class="btn" id="themeBtn" aria-label="Toggle dark mode">☾ Theme</button></div><div class="progress"></div></header>
+<div class="layout">
+<aside class="side">
+<h4>Language, Information &amp; Classical NLP</h4>
+<a class="" data-mod="01-what-is-language" href="01-what-is-language.html"><span class="n">01</span>What is Language?</a>
+<a class="" data-mod="02-can-machines-understand" href="02-can-machines-understand.html"><span class="n">02</span>Can Machines Understand Language?</a>
+<a class="" data-mod="03-nlp-nlu-cl" href="03-nlp-nlu-cl.html"><span class="n">03</span>NLP vs NLU vs Computational Linguistics</a>
+<a class="" data-mod="04-zipfs-law" href="04-zipfs-law.html"><span class="n">04</span>Zipf&#x27;s Law: The Shape of Language</a>
+<a class="" data-mod="05-shannon-redundancy" href="05-shannon-redundancy.html"><span class="n">05</span>Shannon, Redundancy &amp; Entropy</a>
+<a class="" data-mod="06-information-theory" href="06-information-theory.html"><span class="n">06</span>The Information-Theory Toolkit</a>
+<a class="" data-mod="07-ngram-language-models" href="07-ngram-language-models.html"><span class="n">07</span>N-gram Language Models &amp; Perplexity</a>
+<a class="" data-mod="08-pos-tagging-syntax" href="08-pos-tagging-syntax.html"><span class="n">08</span>POS Tagging, HMMs &amp; Syntax</a>
+<h4>Neural NLP</h4>
+<a class="" data-mod="09-neural-network-basics" href="09-neural-network-basics.html"><span class="n">09</span>Neural Network Basics</a>
+<a class="" data-mod="10-word2vec" href="10-word2vec.html"><span class="n">10</span>Word Embeddings: word2vec</a>
+<a class="" data-mod="11-negative-sampling-glove" href="11-negative-sampling-glove.html"><span class="n">11</span>Negative Sampling &amp; GloVe</a>
+<a class="" data-mod="12-evaluating-embeddings" href="12-evaluating-embeddings.html"><span class="n">12</span>Evaluating Embeddings &amp; Their Limits</a>
+<a class="" data-mod="13-neural-language-models" href="13-neural-language-models.html"><span class="n">13</span>From N-grams to Neural Language Models</a>
+<a class="" data-mod="14-rnns" href="14-rnns.html"><span class="n">14</span>Recurrent Neural Networks (RNNs)</a>
+<a class="" data-mod="15-seq2seq-attention" href="15-seq2seq-attention.html"><span class="n">15</span>Seq2Seq &amp; Attention</a>
+<a class="" data-mod="16-coreference-resolution" href="16-coreference-resolution.html"><span class="n">16</span>Coreference Resolution</a>
+<a class="cur" data-mod="17-question-answering" href="17-question-answering.html"><span class="n">17</span>Question Answering Systems</a>
+<a class="" data-mod="18-sentiment-analysis" href="18-sentiment-analysis.html"><span class="n">18</span>Sentiment &amp; Aspect-Based Analysis</a>
+<h4>Revision</h4>
+<a class="" data-mod="19-exam-cheatsheet" href="19-exam-cheatsheet.html"><span class="n">19</span>Exam Cheat-Sheet &amp; Formula Bank</a>
+<h4>On this page</h4><nav class="toc" id="toc"></nav></aside>
+<main><article class="article">
+<div class="crumbs"><a href="../index.html">All topics</a> / Part B · Neural NLP</div>
+<h1>17. Question Answering Systems</h1>
+<p class="lede">Factoid vs complex QA, the IR-based pipeline, ranking, MRR and dense retrievers.</p>
+<div class="meta-row"><span class="chip">Part B · Neural NLP</span><span class="chip alt">🎙 Neural NLP Lecture 7 (15 Nov, part 1)</span></div>
+<div class="tldr"><h3>In 30 seconds</h3><ul>
+<li>QA was one of the first tests of whether computers "understand" language (TREC QA track, IBM Watson, Siri, Google Now, Wolfram Alpha).</li>
+<li><b>Factoid</b> questions have short factual answers ("Who wrote…?"). <b>Complex / narrative</b> questions need reasoning and long answers.</li>
+<li>Two approaches: <b>IR-based</b> (search text, extract the answer) and <b>knowledge-based</b> (query a structured knowledge base), plus hybrids.</li>
+<li>The IR pipeline: <b>question processing → document/passage retrieval → answer extraction</b>.</li>
+<li>Evaluate with <b>accuracy</b> and <b>Mean Reciprocal Rank (MRR)</b>. Modern systems use <b>dense retrievers</b> (embeddings), which is the basis of today's RAG systems.</li>
+</ul></div>
+<h2>What each idea is for</h2>
+<div class="tbl-wrap"><table class="uses">
+<tr><th>Concept</th><th>What it's for</th><th>Where it's used</th></tr>
+<tr><td>Factoid vs complex QA</td><td>Sets the expected answer form (a short span vs reasoning)</td><td>Choosing the system design and dataset</td></tr>
+<tr><td>IR-based QA</td><td>Answers from large unstructured text collections</td><td>Search-engine answers, enterprise document QA, RAG</td></tr>
+<tr><td>Knowledge-based QA</td><td>Answers from structured facts</td><td>Knowledge-graph assistants (Google's knowledge panels)</td></tr>
+<tr><td>Answer type detection</td><td>Narrows down which candidate answers to consider</td><td>Factoid QA pipelines</td></tr>
+<tr><td>Query formulation</td><td>Picks the words to search with</td><td>Search and retrieval</td></tr>
+<tr><td>Passage retrieval &amp; ranking</td><td>Finds the paragraph most likely to hold the answer</td><td>RAG chunking and re-ranking</td></tr>
+<tr><td>NER-based answer extraction</td><td>Pulls out the exact answer span</td><td>Extractive QA</td></tr>
+<tr><td>MRR</td><td>Scores ranked answer lists</td><td>Evaluating search and QA systems</td></tr>
+<tr><td>Relation extraction / temporal / geo reasoning</td><td>Adds structure, time and place awareness to answers</td><td>Knowledge-base construction, "as of" questions</td></tr>
+<tr><td>Dense retrievers &amp; contrastive learning</td><td>Retrieval by meaning rather than keywords</td><td>Vector databases, RAG, semantic search</td></tr>
+</table></div>
+
+
+<h2>What QA looks like</h2>
+<div class="box ex"><span class="lbl">Example: "What do worms eat?"</span>
+<p>Candidate answers: "worms eat grass" ✔, "horses with worms eat grass" ✘, "birds eat worms" ✘, "grass is eaten by worms" ✔. Matching keywords isn't enough. The system has to understand who eats what.</p></div>
+<ul>
+<li><b>IBM Watson</b> won the Jeopardy! quiz show, where answers are hidden in tricky clues ("It's where Pele stores his ball" → <i>soccer locker</i>).</li>
+<li><b>Siri</b> was one of the first consumer spoken QA systems: "Do I need an umbrella tomorrow in San Francisco?" → "Yes, it should rain tomorrow."</li>
+</ul>
+
+<h2>Types of questions</h2>
+<div class="two">
+<div class="card"><h4>Factoid</h4><p>Short facts, usually a few words.<br>"Who wrote the Universal Declaration of Human Rights?"<br>"How many calories are in two slices of apple pie?"<br>"Where is the Louvre Museum located?" → Paris, France</p><p>Most commercial deep-learning QA systems target these.</p></div>
+<div class="card"><h4>Complex / narrative</h4><p>Need reasoning and a long answer.<br>"In children with an acute febrile illness, what is the efficacy of acetaminophen in reducing fever?"</p></div>
+</div>
+
+<h2>Two families of systems</h2>
+<div class="tbl-wrap"><table>
+<tr><th></th><th>IR-based QA</th><th>Knowledge-based QA</th></tr>
+<tr><td>Source</td><td>Large collections of unstructured text (web, documents)</td><td>Structured knowledge bases / knowledge graphs</td></tr>
+<tr><td>How</td><td>Retrieve relevant passages, then extract the answer span</td><td>Turn the question into a structured query</td></tr>
+<tr><td>Inspired by</td><td>Search engines, Watson</td><td>Databases</td></tr>
+</table></div>
+<p>Web search already answers simple factoids ("Who wrote Harry Potter?"), but not questions that need deeper or contextual reasoning.</p>
+
+<h2>The IR-based pipeline, step by step</h2>
+<figure class="diagram"><div class="flow"><span><b>1. Question processing</b><br><small>answer type · query formulation</small></span><b>→</b><span><b>2. Document &amp; passage retrieval</b><br><small>index · retrieve · segment · rank</small></span><b>→</b><span><b>3. Answer extraction</b><br><small>NER tagging · rank candidates</small></span></div>
+<figcaption>Query → find the right document → pull out the answer.</figcaption></figure>
+
+<h3>Step 1: Question processing (understand the question)</h3>
+<ul>
+<li><b>Answer type detection:</b> what kind of entity is wanted? "Who founded Virgin Airlines?" → PERSON. "What Canadian city has the largest population?" → CITY. This narrows the search a lot.</li>
+<li><b>Query formulation:</b> pick the keywords for the search engine ("prime minister", "India").</li>
+<li><b>Question type:</b> definition? list? math?</li>
+<li><b>Focus detection</b> and <b>relation extraction</b>.</li>
+</ul>
+<div class="box ex"><span class="lbl">Example: structuring a question</span>
+<p><i>"Which US state capital has the largest population?"</i> becomes something like:<br>
+Answer type: <b>CITY</b> · Query terms: <b>US state capital, largest, population</b> · Focus: <b>state capital</b> · Relation: <b>has-population(capital, max)</b>.</p>
+<p>A naive QA system would just embed the question. Structuring it adds precision. Answer types come from a <b>taxonomy</b> (e.g. LOCATION → country / city / state; also ANIMAL, COLOR, CREATIVE…). Answer-type detection is itself a <b>classification task</b> (hand-written rules, ML or deep learning), and all of these steps are optional.</p></div>
+
+<h3>Step 2: Document and passage retrieval</h3>
+<ol class="steps">
+<li><b>Keyword selection</b> and IR search over an index of documents.</li>
+<li><b>Segment</b> long documents into shorter passages (paragraphs or chunks).</li>
+<li><b>Rank</b> the passages. Useful features: number of named entities of the right type, number of question keywords present, matching n-grams, keyword proximity, or the <b>cosine similarity</b> between query and passage embeddings (attention-style scores are similarity too).</li>
+</ol>
+
+<h3>Step 3: Answer extraction</h3>
+<div class="box ex"><span class="lbl">Example: using a named-entity tagger</span>
+<p>Q: "Who is the prime minister of India?" → answer type <b>PERSON</b>.<br>
+Passage: "<u>Manmohan Singh</u>, Prime Minister of <u>India</u>, had told left leaders that the deal would not be renegotiated."<br>
+Run NER: Manmohan Singh = PERSON. That's the candidate. (Note that the passage is from an old article, which is why <b>time</b> matters; see below.)</p>
+<p>Q: "How tall is Mount Everest?" → answer type LENGTH → "The official height of Mount Everest is 29,035 feet."</p>
+<p>When several candidates fit ("Who was Queen Victoria's second son?" with many PERSON names in the passage), <b>rank</b> them with rules, ML or deep learning.</p></div>
+
+<h2>Evaluating QA</h2>
+<ul><li><b>Accuracy:</b> does the answer exactly match the gold answer?</li>
+<li><b>Mean Reciprocal Rank (MRR):</b> the system returns a <b>ranked list</b>. Score each question by 1/(rank of the first correct answer), then average.</li></ul>
+<div class="formula">MRR = (1/|Q|) · Σ<sub>q</sub> 1 / rank<sub>q</sub><small>score 0 for a question if no correct answer appears</small></div>
+<div class="box ex"><span class="lbl">Worked example</span>
+<p>Three questions; the first correct answer appears at ranks 1, 3 and 2.</p>
+<div class="formula">MRR = (1/1 + 1/3 + 1/2) / 3 = 1.833 / 3 ≈ <b>0.61</b></div></div>
+
+<h2>Making answers smarter</h2>
+<ul>
+<li><b>Relation extraction:</b> store facts as triples, e.g. <i>born-in(Emma Goldman, June 27 1869)</i>, <i>prime-minister-of(Modi, India)</i>. More structure means faster, better retrieval.</li>
+<li><b>Temporal reasoning:</b> "Who was PM <i>in 2005</i>?" vs "now". If someone took a job in 1594, Thoreau (born 1817) can't be the answer, but Cervantes can. LLMs are still <b>weak at time</b>, partly because dates appear in so many formats (26 June, 26/06, '95…). Add timestamps to your data, or use dynamic data pipelines.</li>
+<li><b>Geospatial knowledge:</b> containment, direction, borders (GeoNames.org is a common source).</li>
+</ul>
+
+<h2>Dense retrievers (the deep-learning way)</h2>
+<p>Encode the <b>query</b> and every <b>passage</b> as embeddings, score them with a similarity function (cosine, dot product, even Manhattan distance), and rank. These "dense" retrievers replace keyword matching, and can drop explicit answer-type detection if your data doesn't support it.</p>
+<div class="box an"><span class="lbl">Training them: contrastive learning</span>
+<p>Like negative sampling: pull the query towards <b>positive</b> passages (ones containing the answer) and push it away from <b>negative</b> ones. <b>Hard negatives</b> are passages that look relevant but don't contain the answer. (In class, a passage about fairy tales for a prime-minister question was called a "hard" negative, though the standard term "hard negative" usually means a <i>confusingly similar</i> passage.)</p></div>
+<div class="box key"><span class="lbl">Connection to today</span><p><b>RAG</b> (retrieval-augmented generation) systems and AI agents are essentially advanced QA pipelines: index documents → retrieve the relevant ones → an LLM generates the answer from them.</p></div>
+
+<div class="box ex"><span class="lbl">Building a QA system for a course (like FoVL)</span>
+<ol class="steps"><li><b>Documents:</b> collect FoVL books, slides and notes.</li><li><b>Questions:</b> write likely student doubts, with gold answers and answer types.</li><li><b>Retrieve</b> the right document/passage, then <b>extract</b> the answer.</li><li><b>Evaluate</b> with accuracy and MRR.</li></ol></div>
+
+<div class="box exam"><span class="lbl">Exam tip</span>
+<p>The instructor said the <b>three steps</b> (question processing, document/passage retrieval, answer extraction) and what happens in each are important. Also know factoid vs complex questions, IR vs knowledge-based approaches, and how to compute MRR.</p></div>
+<h2>From the lecture slides</h2>
+<ul>
+<li><b>History:</b> one of the oldest NLP tasks. Punched-card systems in 1961, and Simmons, Klein &amp; McConlogue (1964) used dependency logic to answer English questions. The <b>TREC QA track</b> (Text Retrieval Conference, from 1992) standardised evaluation. <b>IBM Watson</b> won Jeopardy! on <b>16 Feb 2011</b> (e.g. "William Wilkinson's 'An Account of the Principalities of Wallachia and Moldavia' inspired this author's novel" → <b>Bram Stoker</b>). <b>Wolfram Alpha</b> is a computational knowledge engine: structured data and reasoning rather than free text.</li>
+<li><b>Factoid examples with answer types (slide):</b> Where is the Louvre? → In Paris, France (LOCATION) · Abbreviation for limited partnership? → L.P. (ABBREVIATION) · Names of Odin's ravens? → Huginn and Muninn (ENTITY: animal, list) · Currency in China? → the yuan · Nuts in marzipan? → almonds · Max Roach's instrument? → drums · Stanford's phone number? → 650-723-2300 (NUMERIC). Complex: "What do scholars think about Jefferson's position on dealing with pirates?"</li>
+<li><b>Li &amp; Roth (2002) answer-type taxonomy:</b> coarse classes (ENTITY, HUMAN, LOCATION, NUMERIC, ABBREVIATION, DESCRIPTION) with fine-grained types (LOCATION → city, country, mountain…).</li>
+<li><b>Rule-based answer typing:</b> regexes like "Who {is|was|are|were} PERSON" (e.g. "Who was the first president of India?" → PERSON) and "PERSON (YEAR – YEAR)" (e.g. "Jawaharlal Nehru (1889–1964)"). <b>Headword rule:</b> the head of the first noun phrase after the wh-word, e.g. "Which <b>city</b> in China has the largest number of foreign financial companies?" → LOCATION, "What is the state <b>flower</b> of California?" → ENTITY (plant).</li>
+<li><b>ML answer typing:</b> define a taxonomy → annotate questions (e.g. TREC) → train LR/SVM/neural classifiers on lexical (words, n-grams, wh-cue), syntactic (POS, headwords), semantic (NEs, WordNet) and hand-written (regex) features.</li>
+<li><b>Keyword selection (Moldovan et al. 1999), priority order:</b> 1 non-stop words in quotations · 2 NNP words in named entities · 3 complex nominals with adjectival modifiers · 4 other complex nominals · 5 nouns with adjectival modifiers · 6 other nouns · 7 verbs · 8 adverbs · 9 the question focus word · 10 everything else.</li>
+<li><b>Candidate-answer ranking features:</b> answer-type match, pattern match, number of question keywords, keyword distance, novelty (a word not in the query), apposition, punctuation location, longest sequence of question terms.</li>
+<li><b>Relation extraction in questions:</b> "Whose granddaughter starred in E.T.?" → (acted-in ?x "E.T.") (granddaughter-of ?x ?y). Facts come from Wikipedia infoboxes, DBpedia, Freebase, e.g. author-of("Cao Xue Qin", "Dream of the Red Chamber").</li>
+<li><b>Temporal reasoning (Watson):</b> "In 1594 he took a job as a tax collector in Andalusia". Thoreau is a bad answer (born <b>1817</b>), Cervantes is possible (alive in 1594). <b>Geospatial:</b> Beijing is a good answer for "Asian city"; California is "southwest of Montana" (geonames.org).</li>
+<li><b>Dense retriever = bi-encoder:</b> one LSTM encodes the question, another the passage, and the last hidden states are compared by dot product. Train with positive/negative passages and a contrastive loss, choosing positives and negatives by relevance-guided supervision.</li>
+</ul>
+<h2 id="numericals">Numericals</h2>
+<p>The slides gave the keyword-priority algorithm and the MRR scoring rule. Both are worked below, followed by practice.</p>
+<h3 class="numh"><span class="tag-class">From class</span> From the slides</h3>
+<div class="box ex"><span class="lbl">C1 (slide). Keyword selection for "Who coined the term 'cyberspace' in his novel 'Neuromancer'?"</span>
+<p>cyberspace/<b>1</b> (in quotes), Neuromancer/<b>1</b> (in quotes), term/<b>4</b>, novel/<b>4</b> (complex nominals), coined/<b>7</b> (verb). The query uses the highest-priority words first.</p></div>
+<div class="box ex"><span class="lbl">C2 (slide). MRR scoring rule</span>
+<p>First answer correct → 1; second → ½; third → ⅓ …; none of the M answers correct → 0. Then take the mean over all N queries.</p></div>
+<h3 class="numh"><span class="tag-prac">Practice</span></h3>
+<details class="sol"><summary class="q">P1. Four questions; the first correct answer is at ranks 1, 2, 4 and "not in list". MRR?</summary>
+<p>(1 + 0.5 + 0.25 + 0)/4 = <b>0.4375</b>.</p></details>
+<details class="sol"><summary class="q">P2. A system answers 80 of 100 factoid questions exactly right. Accuracy? If 15 of the wrong ones had the correct answer at rank 2 and 5 never had it, what is the MRR?</summary>
+<p>Accuracy = <b>0.80</b>. MRR = (80×1 + 15×0.5 + 5×0)/100 = <b>0.875</b>.</p></details>
+<details class="sol"><summary class="q">P3. Query vector q = (1, 0), passages p₁ = (0.8, 0.6), p₂ = (0, 1). Rank them by cosine similarity (dense retrieval).</summary>
+<p>cos(q, p₁) = 0.8, cos(q, p₂) = 0. Ranking: <b>p₁ then p₂</b>.</p></details>
+<details class="sol"><summary class="q">P4. Assign priorities: "Who wrote the novel 'Godan' in Hindi literature?"</summary>
+<p>Godan/1 (in quotes); Hindi literature: if "Hindi" is treated as part of a named entity, 2, otherwise novel/Hindi literature as complex nominals = 4; wrote/7.</p></details>
+<details class="sol"><summary class="q">P5. Answer type by headword: "Which river flows through Varanasi?" and "What year did India become independent?"</summary>
+<p>Headword <i>river</i> → LOCATION (river). Headword <i>year</i> → NUMERIC (date).</p></details>
+
+<label class="done-row"><input type="checkbox" id="doneBox"> I've finished this topic</label>
+<div class="pager"><a class="prev" href="16-coreference-resolution.html"><small>← Previous</small>Coreference Resolution</a><a class="next" href="18-sentiment-analysis.html"><small>Next →</small>Sentiment &amp; Aspect-Based Analysis</a></div>
+</article></main>
+</div>
+<footer class="foot">FoVL Notes · written from the course lecture recordings (Foundations of Vision &amp; Language, IIT Jodhpur) · for revision, not a substitute for the slides.</footer>
+</body></html>
