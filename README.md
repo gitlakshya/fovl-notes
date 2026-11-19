@@ -1,0 +1,35 @@
+# FoVL Notes: Foundations of Vision & Language, explained simply
+
+Example-first study notes covering the **language half** of the FoVL course at IIT Jodhpur, written from the lecture recordings and the slide decks the professors used.
+
+**19 topics, in two parts:**
+
+- **Part A: Classical NLP** (Dr. Sidharth Ranjan): what language is, Marr's levels and the Turing test, NLP vs NLU vs CL, Zipf's law, Shannon and redundancy, entropy / conditional entropy / mutual information / KL divergence, n-gram language models and perplexity, POS tagging with HMMs, chunking and syntax.
+- **Part B: Neural NLP**: neural-network basics and gradient descent, word2vec, negative sampling and GloVe, evaluating embeddings, neural language models, RNNs (training, BIO tagging, vanishing gradients, LSTM/GRU), seq2seq and attention, coreference resolution, question answering, and aspect-based sentiment analysis.
+- **Revision**: a one-page formula bank, the topics flagged for the exam, and a self-test.
+
+Every topic includes a 30-second summary, analogies, a "what is it for" table, the exact numericals from class and the slides with step-by-step solutions, extra practice numericals of the same difficulty, worked examples, exam tips and small exercises.
+
+## Publish on GitHub Pages (about 2 minutes)
+
+1. Create a new **public** repository on GitHub, e.g. `fovl-notes`.
+2. Upload everything in this folder (`index.html`, `notes/`, `assets/`, `.nojekyll`, `README.md`, and optionally `_source/`). You can drag and drop on the GitHub web page, or run:
+   ```bash
+   git init && git add . && git commit -m "FoVL notes"
+   git branch -M main
+   git remote add origin https://github.com/<your-username>/fovl-notes.git
+   git push -u origin main
+   ```
+3. In the repo, go to **Settings → Pages**. Under *Build and deployment*, choose **Deploy from a branch**, branch **main**, folder **/ (root)**, then **Save**.
+4. After about a minute, the site is live at `https://<your-username>.github.io/fovl-notes/`.
+
+## Editing the notes
+
+The pages are plain HTML, so no build step is needed to host them. To change content:
+
+- Edit the topic fragments in `_source/src/*.html`.
+- Run `python3 _source/build.py` to regenerate `index.html` and `notes/*.html` (this adds the shared header, sidebar, and previous/next links).
+
+You can also edit `notes/*.html` directly if you prefer.
+
+Features: dark mode, a reading-progress bar, an on-page table of contents, "mark as done" checkboxes (stored in your browser only), and print-friendly styles. Maths is written in plain HTML, so there are no JavaScript maths libraries to load.
