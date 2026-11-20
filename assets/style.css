@@ -156,3 +156,26 @@ footer.foot{border-top:1px solid var(--line);color:var(--muted);font-size:.85rem
 .tag-prac{font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;background:var(--try-bg);color:var(--try);padding:2px 9px;border-radius:999px}
 details.sol summary{color:var(--try)}
 .q{font-weight:600}
+
+/* ---------- figures (inline SVG, theme-aware) ---------- */
+.viz svg.vz{width:100%;max-width:920px;height:auto;display:block;margin:0 auto}
+.viz figcaption{max-width:760px;margin:10px auto 0;text-align:left;font-size:.88rem;line-height:1.55}
+.vz text{fill:var(--ink)}
+.vz text.mut{fill:var(--muted)} .vz text.acc{fill:var(--accent)} .vz text.ex{fill:var(--ex)} .vz text.ac2{fill:var(--exam)} .vz text.hmt{fill:#fff}
+.vz .bx{fill:var(--paper);stroke:var(--line);stroke-width:1.5}
+.vz .bx1{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.5}
+.vz .bx2{fill:var(--exam-bg);stroke:var(--exam);stroke-width:1.5}
+.vz .ax{stroke:var(--muted)} .vz .grid{stroke:var(--line)}
+.vz .ar{stroke:var(--muted)} .vz .arf{fill:var(--muted)}
+.vz .arb{stroke:var(--accent)} .vz .arbf{fill:var(--accent)}
+.vz .arff{fill:var(--line)} .vz line.arf{stroke:var(--line)}
+.vz .ar2{stroke:var(--exam)} .vz .ar2f{fill:var(--exam)}
+.vz .ar3{stroke:var(--ex)} .vz .ar3f{fill:var(--ex)}
+.vz .ln1{stroke:var(--accent)} .vz .ln2{stroke:var(--exam)} .vz .ln3{stroke:var(--ex)} .vz .ln4{stroke:var(--an)}
+.vz .ln1c{stroke:var(--accent)} .vz .ln3c{stroke:var(--ex)}
+.vz .c1{fill:var(--accent)} .vz .c2{fill:var(--exam)} .vz .c3{fill:var(--ex)} .vz .c4{fill:var(--an)} .vz .chair{fill:var(--muted)}
+.vz .c1o{fill:var(--accent)} .vz .c3o{fill:var(--ex)} .vz .c4o{fill:var(--an)}
+.vz .det{stroke:var(--accent)} .vz .grp{stroke:var(--accent)} .vz .grp3{stroke:var(--ex)} .vz .res{stroke:var(--exam)}
+.vz .hm{fill:var(--accent)}
+.vz .vn1{fill:var(--accent);fill-opacity:.18;stroke:var(--accent)} .vz .vn2{fill:var(--ex);fill-opacity:.18;stroke:var(--ex)} .vz .vn3{fill:var(--an);fill-opacity:.2;stroke:var(--an)}
+.vz .stopneg{stop-color:var(--exam)} .vz .stopmid{stop-color:var(--line)} .vz .stoppos{stop-color:var(--ex)}
