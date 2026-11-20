@@ -5,12 +5,14 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, '..')
 
 PARTS = [
+ ("V", "Part 0 — Vision (course intro)", "Dr. Divya Saxena's opening lecture: what computer vision is and how it grew from Marr to CLIP."),
  ("A", "Part A — Language, Information & Classical NLP", "Dr. Sidharth Ranjan's lectures: what language is, how to measure it, and the classic statistical toolkit."),
  ("B", "Part B — Neural NLP", "From a single neuron to word embeddings, RNNs, attention, and real applications."),
 ]
 
 MODS = [
  # slug, part, title, lede, lectures
+ ("00-computer-vision-intro","V","Computer Vision: The Big Picture","Marr's stages, SIFT and HOG, ImageNet and deep learning, segmentation, and CLIP joining images with text.","Vision intro slides (Introduction_Part1)"),
  ("01-what-is-language","A","What is Language?","Language as a window to the mind: symbols, meaning, the inner and outer world, and why language is slippery.","Language Lecture 1 (+ start of Lecture 2)"),
  ("02-can-machines-understand","A","Can Machines Understand Language?","Marr's three levels, the Turing test and the Total Turing test — how to even ask the question properly.","Language Lecture 2"),
  ("03-nlp-nlu-cl","A","NLP vs NLU vs Computational Linguistics","ELIZA vs SHRDLU, the recipe for building an NLU system, ambiguity, and the 'NLP trinity'.","Language Lecture 3"),
@@ -64,7 +66,7 @@ def sidebar(cur_slug):
     return '\n'.join(out)
 
 def footer():
-    return '<footer class="foot">FoVL Notes · written from the course lecture recordings (Foundations of Vision &amp; Language, IIT Jodhpur) · for revision, not a substitute for the slides.</footer>'
+    return '<footer class="foot">FoVL Notes · written from the course lecture recordings and slides (Foundations of Vision &amp; Language, IIT Jodhpur) · for revision, not a substitute for the slides.</footer>'
 
 def build_page(idx):
     slug, part, title, lede, lec = MODS[idx]
@@ -75,7 +77,7 @@ def build_page(idx):
     pager += f'<a class="prev" href="{prev[0]}.html"><small>← Previous</small>{html.escape(prev[2])}</a>' if prev else '<a class="prev" href="../index.html"><small>← Back</small>All topics</a>'
     pager += f'<a class="next" href="{nxt[0]}.html"><small>Next →</small>{html.escape(nxt[2])}</a>' if nxt else '<a class="next" href="../index.html"><small>Done →</small>Back to all topics</a>'
     pager += '</div>'
-    partname = {"A":"Part A · Classical NLP","B":"Part B · Neural NLP","C":"Revision"}[part]
+    partname = {"V":"Part 0 · Vision intro","A":"Part A · Classical NLP","B":"Part B · Neural NLP","C":"Revision"}[part]
     num = slug.split('-')[0]
     page = f'''{head(title+" · FoVL Notes","../")}
 <body data-page="{slug}">
@@ -109,9 +111,9 @@ def build_index():
 <body data-page="home">
 {topbar("", menu=False)}
 <section class="hero">
-<div class="chip">IIT Jodhpur · Foundations of Vision &amp; Language · Language part</div>
+<div class="chip">IIT Jodhpur · Foundations of Vision &amp; Language</div>
 <h1>Big ideas of language &amp; NLP, explained like a story.</h1>
-<p>Notes on every topic in the FoVL language lectures, from "what is language?" to attention and question answering. Each idea comes in plain words first, then an everyday analogy and a worked example with real numbers. Each page also has a short "what it's for" table and every numerical done in class, plus extra practice questions.</p>
+<p>Notes on every topic in the FoVL language lectures, from "what is language?" to attention and question answering, plus the vision intro. More than 60 diagrams and charts, drawn from the class numbers. Each idea comes in plain words first, then an everyday analogy and a worked example with real numbers. Each page also has a short "what it's for" table and every numerical done in class, plus extra practice questions.</p>
 <div class="cta"><a href="notes/01-what-is-language.html">Start at topic 01 →</a><a class="ghost" href="notes/19-exam-cheatsheet.html">Jump to the cheat-sheet</a></div>
 </section>
 <div class="home">
@@ -125,7 +127,7 @@ def build_index():
 <div class="box key"><span class="lbl">What it's for</span><p>A short table on each page: why each concept exists and where it's used.</p></div>
 </div>
 <div class="tldr" style="margin-top:1.4em"><h3>The whole course in one breath</h3>
-<p>Language is a structured, predictable code for thoughts (01–03). Because it's predictable, we can <b>measure</b> it: Zipf's law describes its shape, and Shannon's entropy measures its surprise (04–06). Turn counts into probabilities and you get <b>language models</b> scored by perplexity (07). Add hidden tags and you get <b>HMM taggers</b> and syntax (08). Then neural networks learn <b>word vectors</b> (09–12), <b>RNNs</b> read sequences (13–14), <b>attention</b> lets a model look back at the important words (15), and the same tools power <b>coreference resolution</b>, <b>question answering</b> and <b>sentiment analysis</b> (16–18).</p></div>
+<p>Vision opens the course: from Marr's stages to CLIP, which links pictures and words (00). Language is a structured, predictable code for thoughts (01–03). Because it's predictable, we can <b>measure</b> it: Zipf's law describes its shape, and Shannon's entropy measures its surprise (04–06). Turn counts into probabilities and you get <b>language models</b> scored by perplexity (07). Add hidden tags and you get <b>HMM taggers</b> and syntax (08). Then neural networks learn <b>word vectors</b> (09–12), <b>RNNs</b> read sequences (13–14), <b>attention</b> lets a model look back at the important words (15), and the same tools power <b>coreference resolution</b>, <b>question answering</b> and <b>sentiment analysis</b> (16–18).</p></div>
 {''.join(cards)}
 </div>
 {footer()}
