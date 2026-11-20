@@ -1,0 +1,219 @@
+<div class="tldr"><h3>In 30 seconds</h3><ul>
+<li>One-hot vectors are <b>huge, sparse</b>, and every pair is <b>orthogonal</b>, so "hotel" and "motel" look no more similar than "hotel" and "banana".</li>
+<li><b>Distributional hypothesis</b> (J.R. Firth): "You shall know a word by the company it keeps." Meaning comes from context.</li>
+<li><b>Word embeddings</b> are short, <b>dense</b> vectors (e.g. 100–300 numbers). Similar words get nearby vectors, and arithmetic works: king − man + woman ≈ queen.</li>
+<li><b>word2vec (skip-gram)</b> slides a window over text and learns vectors so that the <b>centre word predicts its context words</b>. CBOW does the reverse.</li>
+<li>P(context o | centre c) = <b>softmax</b> of dot products: exp(u<sub>o</sub>·v<sub>c</sub>) / Σ<sub>w</sub> exp(u<sub>w</sub>·v<sub>c</sub>). Train with <b>cross-entropy</b> loss.</li>
+</ul></div>
+<h2>What each idea is for</h2>
+<div class="tbl-wrap"><table class="uses">
+<tr><th>Concept</th><th>What it's for</th><th>Where it's used</th></tr>
+<tr><td>Distributional hypothesis</td><td>Learns meaning from context alone</td><td>All embeddings and LLMs</td></tr>
+<tr><td>Dense embeddings</td><td>Small vectors where similar words are close together</td><td>Semantic search, recommendation, input layer of neural NLP</td></tr>
+<tr><td>Cosine similarity</td><td>Measures how similar two vectors are</td><td>Search, clustering, duplicate detection, RAG retrieval</td></tr>
+<tr><td>Vector arithmetic</td><td>Captures relations (gender, tense, country–capital)</td><td>Analogy tests, steering and interpreting LLMs</td></tr>
+<tr><td>Skip-gram / CBOW</td><td>Training tasks that produce embeddings</td><td>word2vec; similar ideas in graph and product embeddings</td></tr>
+<tr><td>Softmax</td><td>Turns scores into a probability distribution over many options</td><td>Every classifier and LM output layer, attention</td></tr>
+<tr><td>Cross-entropy loss</td><td>Penalises giving low probability to the correct answer</td><td>Training classifiers and LMs</td></tr>
+<tr><td>Embedding lookup (V×d matrix)</td><td>Picks out a word's vector by its ID</td><td>The first layer of every NLP network</td></tr>
+</table></div>
+
+
+<h2>What's wrong with one-hot vectors?</h2>
+<p>With a vocabulary of V words, each word is a V-long vector with a single 1.</p>
+<div class="box ex"><span class="lbl">Example: hotel vs motel</span>
+<p>hotel = [0 0 0 1 0 0 … 0], motel = [0 0 0 0 0 1 … 0]. Their dot product (and cosine similarity) is <b>0</b>, so they look completely unrelated, even though they mean almost the same thing.</p></div>
+<ul>
+<li><b>No notion of similarity:</b> all words are equally far apart, with no semantic structure.</li>
+<li><b>Huge and sparse:</b> modern models have vocabularies of roughly 250k tokens, so each one-hot vector is 250k long and almost all zeros. That's slow and memory-hungry.</li>
+</ul>
+
+<!--viz:onehot-dense-->
+<figure class="diagram viz" id="fig-onehot-dense"><svg class="vz" viewBox="0 0 760 185" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="One-hot vectors are long, sparse and say nothing about similarity. Embeddings are short, dense and learned; the values here are the vectors trained above." style="max-width:760px" font-family="Inter,system-ui,sans-serif" font-size="13"><text x="200.0" y="18.0" text-anchor="middle" class="" font-size="12" font-weight="700">One-hot (V = 7)</text><text x="610.0" y="18.0" text-anchor="middle" class="" font-size="12" font-weight="700">Dense embedding (d = 3)</text><text x="40.0" y="56.0" text-anchor="end" class="" font-size="12" font-weight="700">cats</text><rect x="55" y="36" width="30" height="30" rx="4" class="bx"/><text x="70.0" y="56.0" text-anchor="middle" class="mut" font-size="11">0</text><rect x="89" y="36" width="30" height="30" rx="4" class="c1"/><text x="104.0" y="56.0" text-anchor="middle" class="hmt" font-size="11">1</text><rect x="123" y="36" width="30" height="30" rx="4" class="bx"/><text x="138.0" y="56.0" text-anchor="middle" class="mut" font-size="11">0</text><rect x="157" y="36" width="30" height="30" rx="4" class="bx"/><text x="172.0" y="56.0" text-anchor="middle" class="mut" font-size="11">0</text><rect x="191" y="36" width="30" height="30" rx="4" class="bx"/><text x="206.0" y="56.0" text-anchor="middle" class="mut" font-size="11">0</text><rect x="225" y="36" width="30" height="30" rx="4" class="bx"/><text x="240.0" y="56.0" text-anchor="middle" class="mut" font-size="11">0</text><rect x="259" y="36" width="30" height="30" rx="4" class="bx"/><text x="274.0" y="56.0" text-anchor="middle" class="mut" font-size="11">0</text><text x="470.0" y="56.0" text-anchor="end" class="" font-size="12" font-weight="700">cats</text><rect x="485" y="36" width="58" height="30" rx="4" class="c3" fill-opacity="0.25"/><text x="514.0" y="56.0" text-anchor="middle" class="" font-size="11" font-weight="600">0.01</text><rect x="547" y="36" width="58" height="30" rx="4" class="c4" fill-opacity="0.69"/><text x="576.0" y="56.0" text-anchor="middle" class="" font-size="11" font-weight="600">-1.33</text><rect x="609" y="36" width="58" height="30" rx="4" class="c3" fill-opacity="0.40"/><text x="638.0" y="56.0" text-anchor="middle" class="" font-size="11" font-weight="600">0.44</text><text x="40.0" y="96.0" text-anchor="end" class="" font-size="12" font-weight="700">dogs</text><rect x="55" y="76" width="30" height="30" rx="4" class="bx"/><text x="70.0" y="96.0" text-anchor="middle" class="mut" font-size="11">0</text><rect x="89" y="76" width="30" height="30" rx="4" class="bx"/><text x="104.0" y="96.0" text-anchor="middle" class="mut" font-size="11">0</text><rect x="123" y="76" width="30" height="30" rx="4" class="bx"/><text x="138.0" y="96.0" text-anchor="middle" class="mut" font-size="11">0</text><rect x="157" y="76" width="30" height="30" rx="4" class="c1"/><text x="172.0" y="96.0" text-anchor="middle" class="hmt" font-size="11">1</text><rect x="191" y="76" width="30" height="30" rx="4" class="bx"/><text x="206.0" y="96.0" text-anchor="middle" class="mut" font-size="11">0</text><rect x="225" y="76" width="30" height="30" rx="4" class="bx"/><text x="240.0" y="96.0" text-anchor="middle" class="mut" font-size="11">0</text><rect x="259" y="76" width="30" height="30" rx="4" class="bx"/><text x="274.0" y="96.0" text-anchor="middle" class="mut" font-size="11">0</text><text x="470.0" y="96.0" text-anchor="end" class="" font-size="12" font-weight="700">dogs</text><rect x="485" y="76" width="58" height="30" rx="4" class="c4" fill-opacity="0.87"/><text x="514.0" y="96.0" text-anchor="middle" class="" font-size="11" font-weight="600">-1.85</text><rect x="547" y="76" width="58" height="30" rx="4" class="c4" fill-opacity="0.60"/><text x="576.0" y="96.0" text-anchor="middle" class="" font-size="11" font-weight="600">-1.04</text><rect x="609" y="76" width="58" height="30" rx="4" class="c3" fill-opacity="0.30"/><text x="638.0" y="96.0" text-anchor="middle" class="" font-size="11" font-weight="600">0.16</text><text x="40.0" y="136.0" text-anchor="end" class="" font-size="12" font-weight="700">milk</text><rect x="55" y="116" width="30" height="30" rx="4" class="bx"/><text x="70.0" y="136.0" text-anchor="middle" class="mut" font-size="11">0</text><rect x="89" y="116" width="30" height="30" rx="4" class="bx"/><text x="104.0" y="136.0" text-anchor="middle" class="mut" font-size="11">0</text><rect x="123" y="116" width="30" height="30" rx="4" class="bx"/><text x="138.0" y="136.0" text-anchor="middle" class="mut" font-size="11">0</text><rect x="157" y="116" width="30" height="30" rx="4" class="bx"/><text x="172.0" y="136.0" text-anchor="middle" class="mut" font-size="11">0</text><rect x="191" y="116" width="30" height="30" rx="4" class="bx"/><text x="206.0" y="136.0" text-anchor="middle" class="mut" font-size="11">0</text><rect x="225" y="116" width="30" height="30" rx="4" class="bx"/><text x="240.0" y="136.0" text-anchor="middle" class="mut" font-size="11">0</text><rect x="259" y="116" width="30" height="30" rx="4" class="c1"/><text x="274.0" y="136.0" text-anchor="middle" class="hmt" font-size="11">1</text><text x="470.0" y="136.0" text-anchor="end" class="" font-size="12" font-weight="700">milk</text><rect x="485" y="116" width="58" height="30" rx="4" class="c4" fill-opacity="0.35"/><text x="514.0" y="136.0" text-anchor="middle" class="" font-size="11" font-weight="600">-0.31</text><rect x="547" y="116" width="58" height="30" rx="4" class="c4" fill-opacity="0.46"/><text x="576.0" y="136.0" text-anchor="middle" class="" font-size="11" font-weight="600">-0.64</text><rect x="609" y="116" width="58" height="30" rx="4" class="c3" fill-opacity="0.92"/><text x="638.0" y="136.0" text-anchor="middle" class="" font-size="11" font-weight="600">2.02</text><text x="200.0" y="170.0" text-anchor="middle" class="mut" font-size="11">cats · dogs = 0 (every pair is orthogonal)</text><text x="580.0" y="170.0" text-anchor="middle" class="ex" font-size="11" font-weight="700">cos(cats, dogs) = 0.48 (learned from contexts)</text></svg><figcaption>One-hot vectors are long, sparse and say nothing about similarity. Embeddings are short, dense and learned; the values here are the vectors trained above.</figcaption></figure>
+<!--/viz:onehot-dense-->
+<h2>The big idea: represent a word by its context</h2>
+<div class="box key"><span class="lbl">Distributional hypothesis</span><p><b>"You shall know a word by the company it keeps."</b> (J.R. Firth). A word's meaning is spread across the words that often appear near it. One of the most successful ideas in modern statistical NLP.</p></div>
+<div class="box ex"><span class="lbl">Example: bank</span>
+<p>"I went to the <b>bank</b> to draw some money" → money, draw, account nearby means a financial bank.<br>
+"I want to sit near the river <b>bank</b>" → river, sit, water nearby means a riverbank.</p>
+<p>The <b>context</b> of a word = the words within a <b>window</b> around it (e.g. ±2 words).</p></div>
+
+<h2>Dense vectors (word embeddings)</h2>
+<p>Instead of [0, 0, 1, 0, …] with 250,000 entries, we want something like</p>
+<div class="formula">banking = [ 0.286, 0.792, −0.177, −0.107, 0.109, −0.542, 0.349, 0.271 ]</div>
+<p>These are called <b>word vectors</b>, <b>word embeddings</b> or <b>neural word representations</b>: a kind of <b>distributed representation</b>. Like PCA or other dimensionality reduction, they keep the meaning in far fewer dimensions. The numbers can be negative or positive because they are simply <b>learned weights</b>.</p>
+<h3>What can we do with them?</h3>
+<ul>
+<li><b>Visualise:</b> reduce to 2-D and similar words cluster (come, go, give, keep / has, have, had).</li>
+<li><b>Measure similarity</b> with dot product or cosine similarity.</li>
+<li><b>Do arithmetic:</b></li>
+</ul>
+<div class="formula">vec(king) − vec(man) + vec(woman) ≈ vec(queen)</div>
+<div class="box an"><span class="lbl">Analogy: a map of meaning</span>
+<p>Picture words as cities on a map. "king → queen" is the same journey (direction and distance) as "man → woman". That arrow is roughly a "gender direction". Current AI-safety research uses similar arithmetic inside LLMs, for example finding a "harmful vs harmless request" direction ("how to make a bomb" vs "how to make a flower pot") to understand when a model refuses.</p></div>
+
+<h2>word2vec (Mikolov et al., 2013)</h2>
+<p>A framework for <b>learning</b> word vectors from a large corpus.</p>
+<ol class="steps">
+<li>Every word in a fixed vocabulary starts with a random vector.</li>
+<li>Go through each position t in the text: there's a <b>centre word c</b> and surrounding <b>context ("outside") words o</b>.</li>
+<li>Use the similarity of the vectors for c and o to compute <b>P(o | c)</b>.</li>
+<li><b>Adjust the vectors</b> to make that probability higher for words that really occur together.</li>
+</ol>
+<div class="two">
+<div class="card"><h4>Skip-gram</h4><p>Given the <b>centre</b> word, predict the <b>context</b> words.<br>"into" → {problems, turning, banking, crises}</p></div>
+<div class="card"><h4>CBOW (continuous bag of words)</h4><p>Given the <b>context</b> words, predict the <b>centre</b> word.<br>{problems, turning, banking, crises} → "into"</p></div>
+</div>
+<div class="box ex"><span class="lbl">Example: the sliding window (size 2)</span>
+<p>"… problems <b>turning</b> into banking crises …"</p>
+<p>Centre = <b>into</b>: predict <i>problems, turning</i> (left) and <i>banking, crises</i> (right), i.e. P(w<sub>t−2</sub>|w<sub>t</sub>), P(w<sub>t−1</sub>|w<sub>t</sub>), P(w<sub>t+1</sub>|w<sub>t</sub>), P(w<sub>t+2</sub>|w<sub>t</sub>). Then slide one step: centre = <b>banking</b>, and so on.</p></div>
+
+<h3>The objective</h3>
+<p><b>Likelihood</b>: how probable is the whole corpus's context words given the centre words, under parameters θ (all the vectors)?</p>
+<div class="formula">L(θ) = Π<sub>t=1..T</sub> Π<sub>−m ≤ j ≤ m, j≠0</sub> P(w<sub>t+j</sub> | w<sub>t</sub> ; θ)</div>
+<p>Multiplying so many probabilities is impractical, so take the log (products become sums) and average. Then <b>minimise the negative</b>:</p>
+<div class="formula">J(θ) = − (1/T) Σ<sub>t</sub> Σ<sub>j</sub> log P(w<sub>t+j</sub> | w<sub>t</sub> ; θ)</div>
+<p>Minimising J = maximising predictive accuracy. Like maximum likelihood estimation, but over words. It's next-token prediction in disguise.</p>
+
+<h3>Where P(o | c) comes from</h3>
+<p>Each word gets <b>two vectors</b> (two roles, not two meanings): <b>v<sub>w</sub></b> when it's the centre word and <b>u<sub>w</sub></b> when it's a context word.</p>
+<div class="formula">P(o | c) = exp(u<sub>o</sub> · v<sub>c</sub>) / Σ<sub>w∈V</sub> exp(u<sub>w</sub> · v<sub>c</sub>)</div>
+<ul>
+<li><b>Numerator:</b> dot product = similarity of centre and context word. Bigger dot product, bigger probability.</li>
+<li><b>Denominator:</b> normalise over the <b>whole vocabulary</b> so the probabilities sum to 1.</li>
+<li><b>Why exp?</b> Dot products can be negative, and exp makes everything positive. It also makes big similarities much bigger and small ones shrink quickly.</li>
+<li>This whole expression is the <b>softmax</b> function.</li>
+</ul>
+<div class="box key"><span class="lbl">Sigmoid or softmax?</span><p><b>Sigmoid</b> for a <b>binary</b> decision (yes/no). <b>Softmax</b> for choosing <b>one out of many</b>, e.g. which of 10 (or 250k) vocabulary words comes next.</p></div>
+
+<!--viz:sg-window-->
+<figure class="diagram viz" id="fig-sg-window"><svg class="vz" viewBox="0 0 780 165" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Each 3-word sentence gives 4 (center, context) pairs with window 1: (cats, like), (like, cats), (like, milk), (milk, like). Five sentences give the 20 training pairs printed in the notebook." style="max-width:780px" font-family="Inter,system-ui,sans-serif" font-size="13"><text x="380.0" y="18.0" text-anchor="middle" class="" font-size="12" font-weight="700">Skip-gram training pairs with window = 1 (class notebook corpus)</text><rect x="120.0" y="40.0" width="96.0" height="36.0" rx="10" class="bx"/><text x="168.0" y="62.0" text-anchor="middle" class="" font-size="13" font-weight="600">cats</text><rect x="240.0" y="40.0" width="96.0" height="36.0" rx="10" class="bx1"/><text x="288.0" y="62.0" text-anchor="middle" class="" font-size="13" font-weight="600">like</text><rect x="360.0" y="40.0" width="96.0" height="36.0" rx="10" class="bx"/><text x="408.0" y="62.0" text-anchor="middle" class="" font-size="13" font-weight="600">milk</text><line x1="288.0" y1="80.0" x2="170.0" y2="112.0" class="ar" stroke-width="2"/><polygon points="170.0,112.0 176.3,107.1 177.9,113.1" class="arf"/><line x1="288.0" y1="80.0" x2="408.0" y2="112.0" class="ar" stroke-width="2"/><polygon points="408.0,112.0 400.1,113.1 401.7,107.1" class="arf"/><text x="288.0" y="132.0" text-anchor="middle" class="mut" font-size="11">center &quot;like&quot; → context &quot;cats&quot;, &quot;milk&quot;</text><text x="560.0" y="50.0" text-anchor="start" class="" font-size="12">cats like milk</text><text x="560.0" y="68.0" text-anchor="start" class="" font-size="12">cats drink milk</text><text x="560.0" y="86.0" text-anchor="start" class="" font-size="12">dogs like milk</text><text x="560.0" y="104.0" text-anchor="start" class="" font-size="12">dogs chase balls</text><text x="560.0" y="122.0" text-anchor="start" class="" font-size="12">cats chase balls</text><text x="560.0" y="150.0" text-anchor="start" class="ex" font-size="12" font-weight="700">5 sentences × 4 pairs = 20 pairs</text></svg><figcaption>Each 3-word sentence gives 4 (center, context) pairs with window 1: (cats, like), (like, cats), (like, milk), (milk, like). Five sentences give the 20 training pairs printed in the notebook.</figcaption></figure>
+<!--/viz:sg-window-->
+<h2>The skip-gram network as matrices</h2>
+<figure class="diagram">
+<div class="flow"><span>one-hot centre word x<br><small>(V × 1)</small></span><b>× E →</b><span>v<sub>c</sub> = embedding lookup<br><small>(d × 1), E is V × d</small></span><b>× U →</b><span>scores u<sub>w</sub>·v<sub>c</sub><br><small>(V × 1)</small></span><b>softmax →</b><span>P(every word | c)<br><small>(V × 1)</small></span><b>vs</b><span>gold one-hot context word</span></div>
+<figcaption>d = embedding size you choose (3 in a toy demo, 100–300 in practice). Multiplying a one-hot vector by E just selects one row: a lookup.</figcaption></figure>
+
+<div class="box ex"><span class="lbl">Worked example (exam style, from the practice session)</span>
+<p>Vocabulary of 4 words, d = 2. The centre word is word #3, so x = [0, 0, 1, 0].</p>
+<ol class="steps">
+<li><b>Lookup:</b> v<sub>c</sub> = Eᵀx = the 3rd row of E = <b>[0.4, 0.1]</b> (say).</li>
+<li><b>Scores:</b> multiply by the context matrix U (4 × 2) to get one score per vocabulary word, e.g. [0.02, 0.03, −0.14, 0.09].</li>
+<li><b>Softmax</b> → roughly [0.25, 0.25, 0.22, 0.27]. The highest is <b>word #4</b>, the predicted context word.</li>
+<li><b>Final embedding</b> of the centre word after this single forward pass (no update yet): still [0.4, 0.1]. In word2vec <b>the learned rows of E are the embeddings</b>.</li>
+</ol>
+<p>These vectors are <b>static</b>: "bank" has the same vector in "river bank" and "money bank". Contextual embeddings (BERT, transformers) fix this.</p></div>
+
+<h2>Cross-entropy loss</h2>
+<p>Compare the predicted distribution p with the gold one-hot y:</p>
+<div class="formula">CE = − Σ<sub>i</sub> y<sub>i</sub> · log p<sub>i</sub> &nbsp; = &nbsp; − log p(true word)</div>
+<div class="box ex"><span class="lbl">Worked example</span>
+<p>Gold y = [0, 1, 0]. Prediction p = [0.7, 0.2, 0.1].</p>
+<div class="formula">CE = −(0·log 0.7 + 1·log 0.2 + 0·log 0.1) = −log 0.2 ≈ <b>1.61</b> (natural log) or 2.32 bits</div>
+<p>If the model had given the true word 0.9, CE = −ln 0.9 ≈ 0.105. Confident and correct means a small loss. The loss is then <b>back-propagated</b> to update E and U.</p></div>
+
+<details><summary>Implementation outline (what you coded in class)</summary>
+<pre><code>corpus = ["cats like milk", "cats drink milk", "dogs like milk"]
+vocab  = sorted({w for s in corpus for w in s.split()})
+w2i    = {w:i for i,w in enumerate(vocab)}
+
+# 1) training pairs (centre, context) with window = 1
+pairs = []
+for s in corpus:
+    ids = [w2i[w] for w in s.split()]
+    for i, c in enumerate(ids):
+        for j in range(max(0, i-1), min(len(ids), i+2)):
+            if j != i: pairs.append((c, ids[j]))
+
+# 2) parameters: E (V x d) centre vectors, U (V x d) context vectors
+import numpy as np
+V, d, lr = len(vocab), 3, 0.05
+E, U = np.random.randn(V, d)*0.1, np.random.randn(V, d)*0.1
+
+for epoch in range(200):
+    for c, o in pairs:
+        v = E[c]                         # lookup
+        scores = U @ v                   # V scores
+        p = np.exp(scores - scores.max()); p /= p.sum()   # softmax
+        loss = -np.log(p[o])             # cross-entropy
+        g = p.copy(); g[o] -= 1          # dLoss/dscores
+        E[c] -= lr * (U.T @ g)           # back-prop to centre vector
+        U    -= lr * np.outer(g, v)      # and to context vectors</code></pre>
+<p>Keep the corpus tiny while learning so it's easy to debug. Push your code to your public GitHub repo, as the instructor asked.</p></details>
+
+<div class="box exam"><span class="lbl">Exam tip</span>
+<p>Know: the problems with one-hot vectors, the distributional hypothesis, skip-gram vs CBOW, the softmax formula and why exp is used, why each word has two vectors, the matrix shapes (V × d), how the embedding is "looked up", and a cross-entropy calculation.</p></div>
+<div class="box try"><span class="lbl">Try it</span>
+<p>Sentence "the cat sat on the mat", window 2. List all (centre, context) pairs for the centre word "sat". (Answer: (sat, the), (sat, cat), (sat, on), (sat, the).)</p></div>
+<!--viz:w2v-pca-->
+<figure class="diagram viz" id="fig-w2v-pca"><svg class="vz" viewBox="0 0 900 330" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Re-running the class word2vec notebook (skip-gram, full softmax, d = 3, window 1, 500 epochs, seed 42). Left: the 7 learned vectors projected to 2-D with PCA, as in the notebook&#x27;s plot; words used in similar contexts land near each other. Right: the training loss starts at ln 7 ≈ 1.95 (a uniform guess over 7 words) and falls as the model learns. The loss cannot reach 0 because one center word has several correct contexts." style="max-width:900px" font-family="Inter,system-ui,sans-serif" font-size="13"><line x1="50.0" y1="265.0" x2="410.0" y2="265.0" class="ax" stroke-width="1.2"/><line x1="50.0" y1="25.0" x2="50.0" y2="265.0" class="ax" stroke-width="1.2"/><text x="8.0" y="145.0" text-anchor="middle" class="mut" font-size="12" transform="rotate(-90 8 145.0)">PCA component 2</text><circle cx="83.5" cy="108.0" r="7" class="c3"/><text x="93.5" y="112.0" text-anchor="start" class="" font-size="13" font-weight="700">balls</text><circle cx="205.7" cy="175.9" r="7" class="c1"/><text x="215.7" y="179.9" text-anchor="start" class="" font-size="13" font-weight="700">cats</text><circle cx="253.2" cy="54.1" r="7" class="c2"/><text x="263.2" y="58.1" text-anchor="start" class="" font-size="13" font-weight="700">chase</text><circle cx="163.6" cy="189.5" r="7" class="c1"/><text x="173.6" y="193.5" text-anchor="start" class="" font-size="13" font-weight="700">dogs</text><circle cx="376.5" cy="140.4" r="7" class="c2"/><text x="386.5" y="144.4" text-anchor="start" class="" font-size="13" font-weight="700">drink</text><circle cx="300.9" cy="109.8" r="7" class="c2"/><text x="310.9" y="113.8" text-anchor="start" class="" font-size="13" font-weight="700">like</text><circle cx="269.2" cy="235.9" r="7" class="c3"/><text x="279.2" y="239.9" text-anchor="start" class="" font-size="13" font-weight="700">milk</text><rect x="60" y="283" width="14" height="10" rx="2" class="c1"/><text x="80.0" y="292.0" text-anchor="start" class="" font-size="11">animals</text><rect x="60" y="301" width="14" height="10" rx="2" class="c2"/><text x="80.0" y="310.0" text-anchor="start" class="" font-size="11">verbs</text><rect x="60" y="319" width="14" height="10" rx="2" class="c3"/><text x="80.0" y="328.0" text-anchor="start" class="" font-size="11">objects</text><text x="230.0" y="292.0" text-anchor="middle" class="mut" font-size="12">PCA component 1 →</text><line x1="520.0" y1="265.0" x2="860.0" y2="265.0" class="grid" stroke-width="1"/><text x="514.0" y="269.0" text-anchor="end" class="mut" font-size="11">0</text><line x1="520.0" y1="210.5" x2="860.0" y2="210.5" class="grid" stroke-width="1"/><text x="514.0" y="214.5" text-anchor="end" class="mut" font-size="11">0.5</text><line x1="520.0" y1="155.9" x2="860.0" y2="155.9" class="grid" stroke-width="1"/><text x="514.0" y="159.9" text-anchor="end" class="mut" font-size="11">1</text><line x1="520.0" y1="101.4" x2="860.0" y2="101.4" class="grid" stroke-width="1"/><text x="514.0" y="105.4" text-anchor="end" class="mut" font-size="11">1.5</text><line x1="520.0" y1="46.8" x2="860.0" y2="46.8" class="grid" stroke-width="1"/><text x="514.0" y="50.8" text-anchor="end" class="mut" font-size="11">2</text><line x1="520.0" y1="265.0" x2="520.0" y2="269.0" class="ax" stroke-width="1"/><text x="520.0" y="282.0" text-anchor="middle" class="mut" font-size="11">0</text><line x1="588.0" y1="265.0" x2="588.0" y2="269.0" class="ax" stroke-width="1"/><text x="588.0" y="282.0" text-anchor="middle" class="mut" font-size="11">100</text><line x1="656.0" y1="265.0" x2="656.0" y2="269.0" class="ax" stroke-width="1"/><text x="656.0" y="282.0" text-anchor="middle" class="mut" font-size="11">200</text><line x1="724.0" y1="265.0" x2="724.0" y2="269.0" class="ax" stroke-width="1"/><text x="724.0" y="282.0" text-anchor="middle" class="mut" font-size="11">300</text><line x1="792.0" y1="265.0" x2="792.0" y2="269.0" class="ax" stroke-width="1"/><text x="792.0" y="282.0" text-anchor="middle" class="mut" font-size="11">400</text><line x1="860.0" y1="265.0" x2="860.0" y2="269.0" class="ax" stroke-width="1"/><text x="860.0" y="282.0" text-anchor="middle" class="mut" font-size="11">500</text><line x1="520.0" y1="265.0" x2="860.0" y2="265.0" class="ax" stroke-width="1.2"/><line x1="520.0" y1="25.0" x2="520.0" y2="265.0" class="ax" stroke-width="1.2"/><text x="690.0" y="301.0" text-anchor="middle" class="mut" font-size="12">epoch</text><text x="478.0" y="145.0" text-anchor="middle" class="mut" font-size="12" transform="rotate(-90 478 145.0)">average cross-entropy loss</text><path d="M520.0,52.7 L520.7,53.0 L521.4,53.3 L522.0,53.6 L522.7,54.0 L523.4,54.5 L524.1,55.1 L524.8,55.8 L525.4,56.7 L526.1,57.8 L526.8,59.2 L527.5,60.9 L528.2,63.0 L528.8,65.4 L529.5,68.4 L530.2,71.7 L530.9,75.5 L531.6,79.6 L532.2,83.9 L532.9,88.3 L533.6,92.7 L534.3,97.0 L535.0,101.2 L535.6,105.3 L536.3,109.3 L537.0,113.0 L537.7,116.6 L538.4,120.0 L539.0,123.2 L539.7,126.2 L540.4,128.9 L541.1,131.3 L541.8,133.2 L542.4,135.0 L543.1,136.6 L543.8,138.0 L544.5,139.3 L545.2,140.4 L545.8,141.4 L546.5,142.4 L547.2,143.3 L547.9,144.2 L548.6,145.2 L549.2,146.1 L549.9,147.1 L550.6,148.0 L551.3,148.7 L552.0,149.6 L552.6,150.5 L553.3,151.2 L554.0,152.0 L554.7,152.8 L555.4,153.5 L556.0,154.1 L556.7,154.9 L557.4,155.3 L558.1,156.0 L558.8,156.4 L559.4,156.9 L560.1,157.1 L560.8,157.5 L561.5,158.0 L562.2,158.4 L562.8,158.6 L563.5,159.0 L564.2,159.2 L564.9,159.5 L565.6,159.6 L566.2,159.9 L566.9,160.1 L567.6,160.3 L568.3,160.7 L569.0,160.7 L569.6,160.7 L570.3,161.0 L571.0,161.2 L571.7,161.3 L572.4,161.3 L573.0,161.6 L573.7,161.6 L574.4,161.6 L575.1,161.8 L575.8,161.9 L576.4,162.3 L577.1,161.9 L577.8,162.2 L578.5,162.2 L579.2,162.3 L579.8,162.3 L580.5,162.6 L581.2,162.7 L581.9,163.1 L582.6,162.7 L583.2,162.7 L583.9,162.9 L584.6,162.7 L585.3,162.9 L586.0,163.2 L586.6,163.0 L587.3,163.1 L588.0,163.1 L588.7,163.6 L589.4,163.5 L590.0,163.3 L590.7,163.5 L591.4,163.4 L592.1,163.6 L592.8,163.8 L593.4,163.7 L594.1,163.9 L594.8,164.1 L595.5,163.7 L596.2,163.8 L596.8,163.8 L597.5,163.9 L598.2,164.2 L598.9,163.9 L599.6,164.0 L600.2,164.4 L600.9,164.4 L601.6,164.4 L602.3,164.1 L603.0,164.4 L603.6,164.3 L604.3,164.5 L605.0,164.6 L605.7,164.4 L606.4,164.3 L607.0,164.6 L607.7,164.7 L608.4,164.4 L609.1,164.9 L609.8,164.5 L610.4,164.7 L611.1,164.9 L611.8,164.6 L612.5,164.7 L613.2,164.7 L613.8,164.8 L614.5,164.9 L615.2,164.6 L615.9,164.7 L616.6,165.1 L617.2,165.1 L617.9,165.1 L618.6,164.8 L619.3,165.1 L620.0,164.9 L620.6,164.8 L621.3,165.3 L622.0,165.2 L622.7,165.2 L623.4,165.2 L624.0,165.1 L624.7,165.0 L625.4,165.1 L626.1,165.2 L626.8,164.9 L627.4,165.4 L628.1,165.4 L628.8,165.4 L629.5,165.4 L630.2,165.1 L630.8,165.0 L631.5,165.3 L632.2,165.4 L632.9,165.1 L633.6,165.3 L634.2,165.5 L634.9,165.5 L635.6,165.2 L636.3,165.1 L637.0,165.5 L637.6,165.4 L638.3,165.3 L639.0,165.3 L639.7,165.2 L640.4,165.4 L641.0,165.6 L641.7,165.4 L642.4,165.5 L643.1,165.5 L643.8,165.3 L644.4,165.4 L645.1,165.5 L645.8,165.4 L646.5,165.6 L647.2,165.8 L647.8,165.4 L648.5,165.8 L649.2,165.5 L649.9,165.4 L650.6,165.4 L651.2,165.6 L651.9,165.3 L652.6,165.6 L653.3,165.5 L654.0,165.4 L654.6,165.9 L655.3,165.6 L656.0,165.5 L656.7,165.7 L657.4,165.6 L658.0,166.0 L658.7,165.8 L659.4,165.7 L660.1,165.5 L660.8,165.3 L661.4,165.8 L662.1,165.6 L662.8,165.4 L663.5,165.7 L664.2,165.6 L664.8,165.9 L665.5,165.7 L666.2,165.8 L666.9,165.9 L667.6,165.6 L668.2,165.7 L668.9,165.8 L669.6,165.6 L670.3,165.6 L671.0,165.7 L671.6,165.6 L672.3,165.7 L673.0,165.7 L673.7,166.0 L674.4,165.8 L675.0,165.8 L675.7,165.7 L676.4,165.5 L677.1,165.8 L677.8,165.6 L678.4,165.7 L679.1,165.7 L679.8,165.8 L680.5,165.6 L681.2,165.7 L681.8,166.0 L682.5,166.0 L683.2,165.8 L683.9,165.8 L684.6,165.9 L685.2,165.9 L685.9,165.4 L686.6,165.8 L687.3,165.5 L688.0,165.8 L688.6,165.7 L689.3,165.7 L690.0,165.7 L690.7,165.7 L691.4,165.8 L692.0,165.5 L692.7,165.8 L693.4,165.8 L694.1,165.7 L694.8,165.7 L695.4,165.7 L696.1,165.9 L696.8,165.5 L697.5,165.6 L698.2,165.8 L698.8,165.9 L699.5,165.7 L700.2,166.1 L700.9,165.5 L701.6,165.6 L702.2,165.9 L702.9,165.7 L703.6,165.9 L704.3,165.9 L705.0,165.8 L705.6,165.8 L706.3,165.6 L707.0,165.9 L707.7,165.7 L708.4,165.7 L709.0,165.5 L709.7,166.0 L710.4,166.0 L711.1,166.0 L711.8,165.7 L712.4,166.2 L713.1,166.0 L713.8,165.8 L714.5,165.8 L715.2,165.7 L715.8,166.0 L716.5,166.0 L717.2,165.7 L717.9,165.7 L718.6,165.6 L719.2,166.2 L719.9,165.6 L720.6,165.7 L721.3,165.9 L722.0,165.9 L722.6,165.8 L723.3,165.7 L724.0,165.7 L724.7,166.2 L725.4,165.9 L726.0,166.4 L726.7,166.1 L727.4,166.0 L728.1,165.9 L728.8,165.8 L729.4,165.9 L730.1,165.8 L730.8,166.1 L731.5,165.7 L732.2,165.8 L732.8,166.1 L733.5,165.9 L734.2,166.0 L734.9,166.2 L735.6,166.1 L736.2,166.1 L736.9,166.1 L737.6,166.0 L738.3,166.0 L739.0,166.2 L739.6,165.9 L740.3,165.9 L741.0,165.9 L741.7,166.2 L742.4,166.1 L743.0,166.2 L743.7,166.0 L744.4,166.1 L745.1,165.8 L745.8,166.0 L746.4,165.8 L747.1,165.8 L747.8,166.2 L748.5,166.0 L749.2,166.2 L749.8,166.5 L750.5,165.7 L751.2,166.0 L751.9,166.2 L752.6,166.0 L753.2,166.2 L753.9,166.1 L754.6,166.1 L755.3,166.2 L756.0,166.0 L756.6,166.2 L757.3,166.1 L758.0,166.1 L758.7,166.2 L759.4,166.3 L760.0,166.1 L760.7,166.2 L761.4,166.0 L762.1,166.2 L762.8,166.0 L763.4,166.3 L764.1,166.2 L764.8,166.2 L765.5,166.3 L766.2,166.2 L766.8,166.1 L767.5,166.2 L768.2,166.4 L768.9,166.1 L769.6,166.2 L770.2,166.0 L770.9,166.1 L771.6,166.2 L772.3,166.2 L773.0,166.1 L773.6,166.4 L774.3,166.1 L775.0,166.0 L775.7,166.2 L776.4,166.1 L777.0,166.1 L777.7,166.2 L778.4,166.1 L779.1,166.1 L779.8,166.4 L780.4,166.2 L781.1,166.1 L781.8,166.0 L782.5,166.4 L783.2,166.1 L783.8,166.2 L784.5,166.1 L785.2,166.3 L785.9,166.3 L786.6,166.0 L787.2,166.2 L787.9,166.1 L788.6,166.4 L789.3,166.0 L790.0,166.2 L790.6,166.1 L791.3,166.4 L792.0,166.1 L792.7,166.0 L793.4,166.4 L794.0,166.4 L794.7,166.2 L795.4,166.4 L796.1,166.3 L796.8,166.5 L797.4,166.2 L798.1,166.6 L798.8,166.6 L799.5,166.0 L800.2,166.5 L800.8,166.6 L801.5,166.1 L802.2,166.4 L802.9,166.0 L803.6,166.3 L804.2,166.3 L804.9,166.2 L805.6,166.2 L806.3,166.2 L807.0,166.4 L807.6,166.1 L808.3,166.4 L809.0,166.4 L809.7,166.3 L810.4,166.5 L811.0,166.2 L811.7,166.5 L812.4,166.3 L813.1,166.1 L813.8,166.5 L814.4,166.3 L815.1,166.4 L815.8,166.3 L816.5,166.6 L817.2,166.4 L817.8,166.2 L818.5,166.3 L819.2,166.5 L819.9,166.3 L820.6,166.5 L821.2,166.3 L821.9,166.2 L822.6,166.3 L823.3,166.5 L824.0,166.4 L824.6,166.4 L825.3,166.4 L826.0,166.4 L826.7,166.2 L827.4,166.2 L828.0,166.4 L828.7,166.3 L829.4,166.3 L830.1,166.5 L830.8,166.5 L831.4,166.3 L832.1,166.2 L832.8,166.8 L833.5,166.6 L834.2,166.2 L834.8,166.4 L835.5,166.4 L836.2,166.4 L836.9,166.4 L837.6,166.3 L838.2,166.4 L838.9,166.4 L839.6,166.6 L840.3,166.4 L841.0,166.5 L841.6,166.7 L842.3,166.3 L843.0,166.2 L843.7,166.7 L844.4,166.4 L845.0,166.3 L845.7,166.3 L846.4,166.4 L847.1,166.5 L847.8,166.4 L848.4,166.4 L849.1,166.3 L849.8,166.4 L850.5,166.4 L851.2,166.3 L851.8,166.5 L852.5,166.5 L853.2,166.7 L853.9,166.3 L854.6,166.4 L855.2,166.5 L855.9,166.4 L856.6,166.4 L857.3,166.6 L858.0,166.5 L858.6,166.5 L859.3,166.5" class="ln1" stroke-width="2.5" fill="none"/><text x="690.0" y="153.7" text-anchor="middle" class="mut" font-size="11">starts at 1.95 ≈ ln 7, ends at 0.90</text></svg><figcaption>Re-running the class word2vec notebook (skip-gram, full softmax, d = 3, window 1, 500 epochs, seed 42). Left: the 7 learned vectors projected to 2-D with PCA, as in the notebook's plot; words used in similar contexts land near each other. Right: the training loss starts at ln 7 ≈ 1.95 (a uniform guess over 7 words) and falls as the model learns. The loss cannot reach 0 because one center word has several correct contexts.</figcaption></figure>
+<!--/viz:w2v-pca-->
+<h2>From the lecture slides</h2>
+<ul>
+<li><b>Why not WordNet synonyms?</b> The slide says relying on them "fails badly": synonym lists are incomplete, similarity isn't binary, and context changes meaning. So instead, <b>learn to encode similarity in the vectors themselves</b>. Example: a search for "Seattle motel" should match "Seattle hotel".</li>
+<li>One-hot dimension = vocabulary size (e.g. <b>500,000+</b>), a <i>localist</i> representation.</li>
+<li>Contexts that build the meaning of <b>banking</b>: "…government debt problems turning into <u>banking</u> crises…", "…Europe needs unified <u>banking</u> regulation…", "…India has just given its <u>banking</u> system a shot in the arm…".</li>
+<li><b>Why two vectors per word?</b> Easier optimisation. Average them at the end.</li>
+<li><b>Loss variants:</b> naive softmax (simple but expensive with many classes), hierarchical softmax, negative sampling.</li>
+<li><b>Stochastic gradient descent:</b> J(θ) covers all windows in the corpus (billions), so instead of waiting, sample a window or mini-batch and update after each one.</li>
+<li><b>Softmax name:</b> "max" because it amplifies the largest xᵢ, "soft" because smaller ones still get some probability.</li>
+</ul>
+<div class="tbl-wrap"><table><tr><th>Model</th><th>What it predicts</th><th>What it learns</th></tr>
+<tr><td>Skip-gram</td><td>context words from the target word</td><td>vectors capturing co-occurrence patterns</td></tr>
+<tr><td>CBOW</td><td>the target word from context words</td><td>similar word vectors</td></tr>
+<tr><td>GloVe</td><td>learns from co-occurrence counts</td><td>vectors encoding statistical relationships</td></tr></table></div>
+<details><summary>Slide pseudocode: WORD2VEC-SKIPGRAM(Corpus, c, d, η, T)</summary>
+<pre><code>1. Build vocabulary V from the corpus
+2. Initialise input embeddings E randomly
+3. Initialise output weights W randomly
+4. For each sentence, each word w at position i,
+   each context position j within window c (i ≠ j): add pair (w, context_word)
+5. For epoch = 1..T: shuffle pairs; for each (center, context):
+     h = E[center]                     # forward
+     scores = h × W
+     probabilities = Softmax(scores)
+     loss = -log(probabilities[context])
+     error = probabilities; error[context] -= 1   # backprop
+     gradient_W = hᵀ × error ; gradient_h = W × error
+     W = W - η × gradient_W ; E[center] = E[center] - η × gradient_h
+6. Return E</code></pre></details>
+<h2 id="numericals">Numericals</h2>
+<h3 class="numh"><span class="tag-class">From class</span> Exact slide / practice-session numbers</h3>
+<div class="box ex"><span class="lbl">C1. One-hot vectors are orthogonal</span>
+<p>motel = [0 0 0 0 0 0 0 0 0 0 1 0 0 0 0], hotel = [0 0 0 0 0 0 0 1 0 0 0 0 0 0 0]. Dot product = <b>0</b>, so "no natural notion of similarity".</p></div>
+<div class="box ex"><span class="lbl">C2. Dense vectors (slide)</span>
+<p>banking = [0.286, 0.792, −0.177, −0.107, 0.109, −0.542, 0.349, 0.271]; monetary = [0.413, 0.582, −0.007, 0.247, 0.216, −0.718, 0.147, 0.051]. Similar words, similar numbers.</p></div>
+<div class="box ex"><span class="lbl">C3. Practice question (slide): skip-gram with V = 10,000, d = 300, full softmax</span>
+<p>(a) Input embedding matrix W<sub>input</sub> ∈ ℝ<sup>V×D</sup> = 10,000 × 300 = <b>3,000,000</b><br>
+(b) Output matrix W<sub>output</sub> ∈ ℝ<sup>D×V</sup> = 300 × 10,000 = <b>3,000,000</b><br>
+(c) Total = <b>6,000,000</b> (6 million parameters, biases ignored)</p></div>
+<div class="box ex"><span class="lbl">C4. Practice question (slide): V = 6,000, d = 200, window = 2</span>
+<p>(a) One-hot input dimension = <b>6000 × 1</b>. (b) Embedding output = <b>200 × 1</b>.<br>
+(c) Pairs for an 8-word sentence: centre words 1–8 have 2, 3, 4, 4, 4, 4, 3, 2 context words → 2+3+4+4+4+4+3+2 = <b>26</b> training pairs.</p></div>
+<div class="box ex"><span class="lbl">C5. Quiz-practice walk-through (23 Oct)</span>
+<p>V = 4, d = 2, centre = word 3, so x = [0,0,1,0] and v<sub>c</sub> = lookup = (0.4, 0.1). Scores u·v<sub>c</sub> → softmax ≈ [0.25, 0.25, 0.21, 0.27], so word 4 is predicted. The final embedding after one forward pass is still (0.4, 0.1), and it is <b>static</b>.</p></div>
+<div class="box ex"><span class="lbl">C6. Cross-entropy (16 Oct)</span>
+<p>y = [0, 1, 0], p = [0.7, 0.2, 0.1]: CE = −(0·log 0.7 + 1·log 0.2 + 0·log 0.1) = −log 0.2 ≈ <b>1.61</b>.</p></div>
+
+<h3 class="numh"><span class="tag-class">From class</span> The word2vec Colab notebook (toy corpus)</h3>
+<div class="box ex"><span class="lbl">C-nb. Counting what the notebook builds</span>
+<p>Corpus: "cats like milk", "cats drink milk", "dogs like milk", "dogs chase balls", "cats chase balls". Vocabulary (sorted): balls, cats, chase, dogs, drink, like, milk → <b>V = 7</b>. Settings: window = 1, d = 3, learning rate 0.05, 500 epochs.</p>
+<ul>
+<li><b>Training pairs</b>: in a 3-word sentence the middle word has 2 neighbours and each end word has 1 → 4 pairs per sentence → 5 × 4 = <b>20 pairs</b>.</li>
+<li><b>Parameters</b>: input matrix E is V × d = 7 × 3 = 21, output matrix W is d × V = 3 × 7 = 21 → <b>42</b> numbers.</li>
+<li><b>Loss at the start</b>: with tiny random weights the softmax is almost uniform, P(context) ≈ 1/7, so the loss is −ln(1/7) = ln 7 ≈ <b>1.95</b>. That is exactly where the loss curve above starts.</li>
+<li><b>Best possible loss</b>: "like" has two different correct contexts in the same sentence (cats, milk), so P can't be 1 for both. The loss can never reach 0.</li>
+</ul></div>
+<h3 class="numh"><span class="tag-prac">Practice</span> Same level</h3>
+<details class="sol"><summary class="q">P1. Skip-gram with V = 50,000, d = 100, full softmax. Size of each matrix and total parameters?</summary>
+<p>Input 50,000 × 100 = 5,000,000. Output 100 × 50,000 = 5,000,000. Total <b>10,000,000</b>.</p></details>
+<details class="sol"><summary class="q">P2. V = 8,000, d = 300, window = 1. One-hot and embedding dimensions? Pairs for a 6-word sentence?</summary>
+<p>8000 × 1 and 300 × 1. Pairs: 1 + 2 + 2 + 2 + 2 + 1 = <b>10</b>.</p></details>
+<details class="sol"><summary class="q">P3. Window = 2, 5-word sentence. How many pairs? With window = 3?</summary>
+<p>Window 2: 2 + 3 + 4 + 3 + 2 = <b>14</b>. Window 3 (each word sees everything else in a 5-word sentence): 5 × 4 = <b>20</b>.</p></details>
+<details class="sol"><summary class="q">P4. Cosine similarity of hotel = (0.8, 0.6) and motel = (0.7, 0.7)?</summary>
+<p>(0.56 + 0.42)/(1 × 0.990) ≈ <b>0.99</b>.</p></details>
+<details class="sol"><summary class="q">P5. Scores [2, 1, 0]. Softmax, and CE if the true word is word 2?</summary>
+<p>≈ [0.665, 0.245, 0.090]. CE = −ln 0.245 ≈ <b>1.41</b>.</p></details>
+<details class="sol"><summary class="q">P6. king = (3, 4), man = (1, 1), woman = (1, 3): compute king − man + woman.</summary>
+<p><b>(3, 6)</b>, which is nearest to queen = (3, 6.2).</p></details>

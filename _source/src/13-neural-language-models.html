@@ -1,0 +1,116 @@
+<div class="tldr"><h3>In 30 seconds</h3><ul>
+<li>A language model <b>predicts the next word</b>. Do it repeatedly and you <b>generate text</b>.</li>
+<li><b>Count-based n-gram LM:</b> P(w | last n−1 words) = count ratio. Simple, but it ignores older context, suffers from sparsity, and needs huge storage.</li>
+<li><b>Fixed-window neural LM</b> (Bengio et al., 2003): concatenate the embeddings of the last few words → hidden layer → softmax over the vocabulary. No sparsity problem, no n-gram tables.</li>
+<li>Its weaknesses: the window is always too small, a bigger window means a bigger W, and each position has <b>its own weights</b> (no sharing). That motivates RNNs.</li>
+</ul></div>
+<h2>What each idea is for</h2>
+<div class="tbl-wrap"><table class="uses">
+<tr><th>Concept</th><th>What it's for</th><th>Where it's used</th></tr>
+<tr><td>Next-word prediction</td><td>The training task that teaches models language</td><td>Autocomplete, GPT-style pre-training</td></tr>
+<tr><td>Count-based LM</td><td>A simple, fast, interpretable baseline</td><td>Keyboards, speech decoders, quick text generation</td></tr>
+<tr><td>Sampling to generate</td><td>Produces new text one word at a time</td><td>Chatbots, story generation</td></tr>
+<tr><td>Fixed-window neural LM</td><td>Removes sparsity by using embeddings</td><td>A historical step towards RNNs and transformers; window-based taggers</td></tr>
+<tr><td>Softmax over the vocabulary</td><td>Picks the next word from the whole vocabulary</td><td>Output layer of every LM</td></tr>
+<tr><td>Parameter sharing</td><td>Learns a fact once and reuses it at every position</td><td>RNNs, CNNs, transformers</td></tr>
+</table></div>
+
+
+<h2>Language modelling = next-word prediction</h2>
+<div class="formula">P( x<sup>(t+1)</sup> | x<sup>(t)</sup>, …, x<sup>(1)</sup> )</div>
+<p>Phone keyboards, search autocomplete and chatbots all do this.</p>
+
+<h2>Count-based (n-gram) language models, revisited</h2>
+<p>Before deep learning: collect statistics about how often different n-grams occur and use them to predict. Under the <b>Markov assumption</b>, x<sup>(t+1)</sup> depends only on the previous n−1 words.</p>
+<div class="box ex"><span class="lbl">Worked example: a 4-gram model</span>
+<p>Sentence: <i>"As the proctor started the clock, the students opened their ___"</i>. A 4-gram model <b>throws away</b> everything except the last 3 words:</p>
+<div class="formula">P(w | students opened their) = count(students opened their w) / count(students opened their)</div>
+<p>Suppose in the corpus "students opened their" occurred <b>1000</b> times, followed by "books" <b>400</b> times and "exams" <b>100</b> times:</p>
+<div class="formula">P(books | …) = 400/1000 = 0.4 &nbsp;&nbsp;&nbsp; P(exams | …) = 100/1000 = 0.1</div>
+<p>The model predicts <b>books</b>. But the discarded word <b>proctor</b> tells us it's an exam, so <i>exams</i> or <i>answer sheets</i> would fit better. <b>Lesson: ignoring context hurts.</b></p></div>
+
+<h3>Problems with n-gram LMs</h3>
+<ul>
+<li><b>Sparsity (numerator):</b> "students opened their <i>petri-dishes</i>" never seen → probability 0 → needs smoothing.</li>
+<li><b>Sparsity (denominator):</b> "students opened their" never seen → can't compute at all → back off to "opened their".</li>
+<li><b>Storage:</b> you have to store counts for every n-gram, and that grows with corpus size and n. Increasing n makes sparsity worse.</li>
+</ul>
+
+<h3>Generating text with an n-gram model</h3>
+<div class="box ex"><span class="lbl">Example: trigram model trained on ~1.7M words of business/financial news</span>
+<p>Start with "today the" and look at the next-word distribution: <i>company</i> 0.153, <i>bank</i> 0.153, <i>price</i> 0.077, <i>italian</i> 0.039, <i>emirate</i> 0.039, …<br>
+<b>Sample</b> one (say "price"), append it, condition on "the price", sample again, and so on:</p>
+<pre><code>today the price of gold per ton , while production of shoe lasts and shoe industry , the bank intervened just after it considered and rejected an imf demand …</code></pre>
+<p>Surprisingly grammatical in places, but <b>incoherent</b> overall. More data and a larger n help somewhat.</p></div>
+<div class="box an"><span class="lbl">Analogy: a bag of words</span><p>Think of the corpus as a big bag of word slips: "cat" ×5, "orange" ×6, and so on. Probability = how likely you are to pull a given slip out. Counting is just measuring the bag.</p></div>
+
+<h2>A neural language model</h2>
+<p>We already know how to build a neural network (topic 09) and how to look up word vectors (topic 10). So: feed the context words in, multiply by weights, softmax over the vocabulary, and pick the next word.</p>
+<div class="box ex"><span class="lbl">Worked example: a 4-word vocabulary</span>
+<p>Vocabulary: <b>books, houses, lamps, stamps</b>. The context ("students opened their") is turned into a hidden vector x (3-D here; often 100–300-D in practice). The output weight matrix is 4 × 3 (vocabulary × hidden size), so W x gives 4 scores:</p>
+<div class="formula">W·x = [1.8, −2.2, 2.9, −0.3] &nbsp; → softmax → &nbsp; [0.24, 0.004, 0.73, 0.03]</div>
+<p>Prediction: <b>lamps</b> (0.73). The gold answer was <b>books</b>, so the loss = −log 0.24 ≈ 1.43. Back-propagate the error and update the weights, which nudges P(books) up next time.</p></div>
+<div class="box key"><span class="lbl">One recipe, many tasks</span><p>Change only <b>what goes in</b> and <b>what you compare against</b>. For sentiment analysis, the "vocabulary" of outputs is just {positive, negative}. For translation, the input is a sentence in language A and the target is the sentence in language B. Once the input/output setup is clear, you can adapt a neural network to almost any task.</p></div>
+
+<h3>The fixed-window neural LM (Bengio et al., 2000/2003)</h3>
+<figure class="diagram"><div class="flow"><span>words x<sup>(1)</sup>…x<sup>(4)</sup><br><small>"the students opened their"</small></span><b>→</b><span>embeddings, concatenated<br><small>e = [e<sup>(1)</sup>; e<sup>(2)</sup>; e<sup>(3)</sup>; e<sup>(4)</sup>]</small></span><b>→</b><span>hidden layer<br><small>h = f(W e + b₁)</small></span><b>→</b><span>output<br><small>ŷ = softmax(U h + b₂) ∈ ℝ<sup>|V|</sup></small></span></div>
+<figcaption>Read ŷ as a probability for every vocabulary word: books? laptops? exams? zoo?</figcaption></figure>
+<p>The same window idea works for tagging: to label "Paris" as a LOCATION in "museums in <b>Paris</b> are amazing", feed in the window around it.</p>
+<div class="two">
+<div class="card"><h4>✔ Improvements over n-grams</h4><p>No sparsity problem (every word has an embedding, so similar contexts share strength). No need to store every observed n-gram.</p></div>
+<div class="card"><h4>✘ Remaining problems</h4><p>The window is <b>too small</b>. Enlarging it enlarges W. And x<sup>(1)</sup>, x<sup>(2)</sup>… are multiplied by <b>completely different</b> parts of W: <b>no parameter sharing, no symmetry</b>.</p></div>
+</div>
+<div class="box ex"><span class="lbl">Why "no parameter sharing" is bad</span>
+<p>"The <b>students</b> opened their…" vs "Yesterday the <b>students</b> opened their…". The word "students" sits at position 2 in one and position 3 in the other, so it hits <b>different weights</b>. The model has to learn the same fact about "students" separately for each position. That wastes data and capacity and generalises poorly.</p></div>
+<p><b>What we need:</b> an architecture that can read <b>any length of input</b> and reuses the <b>same weights</b> at every position. That's the RNN (next topic).</p>
+
+<!--viz:softmax-->
+<figure class="diagram viz" id="fig-softmax"><svg class="vz" viewBox="0 0 840 245" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Softmax turns raw scores into a probability distribution over the vocabulary: exponentiate, then divide by the sum. Negative scores become tiny but never exactly 0. (Scores from the slide example.)" style="max-width:840px" font-family="Inter,system-ui,sans-serif" font-size="13"><line x1="60.0" y1="210.0" x2="360.0" y2="210.0" class="grid" stroke-width="1"/><text x="54.0" y="214.0" text-anchor="end" class="mut" font-size="11">-3</text><line x1="60.0" y1="182.3" x2="360.0" y2="182.3" class="grid" stroke-width="1"/><text x="54.0" y="186.3" text-anchor="end" class="mut" font-size="11">-2</text><line x1="60.0" y1="154.6" x2="360.0" y2="154.6" class="grid" stroke-width="1"/><text x="54.0" y="158.6" text-anchor="end" class="mut" font-size="11">-1</text><line x1="60.0" y1="126.9" x2="360.0" y2="126.9" class="grid" stroke-width="1"/><text x="54.0" y="130.9" text-anchor="end" class="mut" font-size="11">0</text><line x1="60.0" y1="99.2" x2="360.0" y2="99.2" class="grid" stroke-width="1"/><text x="54.0" y="103.2" text-anchor="end" class="mut" font-size="11">1</text><line x1="60.0" y1="71.5" x2="360.0" y2="71.5" class="grid" stroke-width="1"/><text x="54.0" y="75.5" text-anchor="end" class="mut" font-size="11">2</text><line x1="60.0" y1="43.8" x2="360.0" y2="43.8" class="grid" stroke-width="1"/><text x="54.0" y="47.8" text-anchor="end" class="mut" font-size="11">3</text><line x1="60.0" y1="210.0" x2="360.0" y2="210.0" class="ax" stroke-width="1.2"/><line x1="60.0" y1="30.0" x2="60.0" y2="210.0" class="ax" stroke-width="1.2"/><text x="18.0" y="120.0" text-anchor="middle" class="mut" font-size="12" transform="rotate(-90 18 120.0)">score z = W·x</text><line x1="60.0" y1="126.9" x2="360.0" y2="126.9" class="ax" stroke-width="1"/><rect x="75.0" y="77.1" width="45.0" height="49.8" rx="3" class="c1"/><text x="97.5" y="72.1" text-anchor="middle" class="" font-size="11" font-weight="700">1.8</text><text x="97.5" y="226.0" text-anchor="middle" class="mut" font-size="11">books</text><rect x="150.0" y="126.9" width="45.0" height="60.9" rx="3" class="c4"/><text x="172.5" y="200.8" text-anchor="middle" class="" font-size="11" font-weight="700">-2.2</text><text x="172.5" y="226.0" text-anchor="middle" class="mut" font-size="11">laptops</text><rect x="225.0" y="46.6" width="45.0" height="80.3" rx="3" class="c1"/><text x="247.5" y="41.6" text-anchor="middle" class="" font-size="11" font-weight="700">2.9</text><text x="247.5" y="226.0" text-anchor="middle" class="mut" font-size="11">exams</text><rect x="300.0" y="126.9" width="45.0" height="8.3" rx="3" class="c4"/><text x="322.5" y="148.2" text-anchor="middle" class="" font-size="11" font-weight="700">-0.3</text><text x="322.5" y="226.0" text-anchor="middle" class="mut" font-size="11">minds</text><line x1="380.0" y1="120.0" x2="450.0" y2="120.0" class="ar" stroke-width="2.5"/><polygon points="450.0,120.0 442.6,123.1 442.6,116.9" class="arf"/><text x="415.0" y="113.0" text-anchor="middle" class="mut" font-size="11">softmax</text><line x1="500.0" y1="210.0" x2="800.0" y2="210.0" class="grid" stroke-width="1"/><text x="494.0" y="214.0" text-anchor="end" class="mut" font-size="11">0</text><line x1="500.0" y1="165.0" x2="800.0" y2="165.0" class="grid" stroke-width="1"/><text x="494.0" y="169.0" text-anchor="end" class="mut" font-size="11">0.25</text><line x1="500.0" y1="120.0" x2="800.0" y2="120.0" class="grid" stroke-width="1"/><text x="494.0" y="124.0" text-anchor="end" class="mut" font-size="11">0.5</text><line x1="500.0" y1="75.0" x2="800.0" y2="75.0" class="grid" stroke-width="1"/><text x="494.0" y="79.0" text-anchor="end" class="mut" font-size="11">0.75</text><line x1="500.0" y1="30.0" x2="800.0" y2="30.0" class="grid" stroke-width="1"/><text x="494.0" y="34.0" text-anchor="end" class="mut" font-size="11">1</text><line x1="500.0" y1="210.0" x2="800.0" y2="210.0" class="ax" stroke-width="1.2"/><line x1="500.0" y1="30.0" x2="500.0" y2="210.0" class="ax" stroke-width="1.2"/><text x="458.0" y="120.0" text-anchor="middle" class="mut" font-size="12" transform="rotate(-90 458 120.0)">probability</text><rect x="509.4" y="166.6" width="56.2" height="43.4" rx="4" class="c3"/><text x="537.5" y="161.6" text-anchor="middle" class="" font-size="11" font-weight="600">0.24</text><text x="537.5" y="226.0" text-anchor="middle" class="mut" font-size="11">books</text><rect x="584.4" y="209.2" width="56.2" height="0.8" rx="4" class="c3"/><text x="612.5" y="204.2" text-anchor="middle" class="" font-size="11" font-weight="600">0.004</text><text x="612.5" y="226.0" text-anchor="middle" class="mut" font-size="11">laptops</text><rect x="659.4" y="79.5" width="56.2" height="130.5" rx="4" class="c3"/><text x="687.5" y="74.5" text-anchor="middle" class="" font-size="11" font-weight="600">0.72</text><text x="687.5" y="226.0" text-anchor="middle" class="mut" font-size="11">exams</text><rect x="734.4" y="204.7" width="56.2" height="5.3" rx="4" class="c3"/><text x="762.5" y="199.7" text-anchor="middle" class="" font-size="11" font-weight="600">0.03</text><text x="762.5" y="226.0" text-anchor="middle" class="mut" font-size="11">minds</text></svg><figcaption>Softmax turns raw scores into a probability distribution over the vocabulary: exponentiate, then divide by the sum. Negative scores become tiny but never exactly 0. (Scores from the slide example.)</figcaption></figure>
+<!--/viz:softmax-->
+<h2>Hands-on: an n-gram LM in PyTorch</h2>
+<ol class="steps">
+<li>Load a real dataset through PyTorch/torchtext/datasets (e.g. IMDb, WikiText) instead of a hand-made list.</li>
+<li>Tokenize, build the vocabulary, convert to tensors, split train/test.</li>
+<li>Model: embedding → linear → softmax; train to predict the next word from the previous n−1 words.</li>
+<li>Report accuracy (correct predictions / total) and <b>generate</b> a paragraph: feed in "I like", take the most probable word, append it, repeat 50 times.</li>
+</ol>
+<div class="box ex"><span class="lbl">What students saw</span><p>Generated text like "my friend is loud guitar loud guitar loud guitar…". <b>Repetition</b> was a classic problem in pre-transformer models (the instructor recalled RNN outputs like "I do not know" or "thank you thank you…"). A model can only output words in its vocabulary, and a larger n (more context) improves fluency. Transformers changed things because they <b>scale</b> with more data. Long-document generation is still hard today.</p></div>
+
+<div class="box exam"><span class="lbl">Exam tip</span>
+<p>Compute an n-gram probability from counts, list the problems (context, sparsity, storage), write the fixed-window neural LM equations, and explain "no parameter sharing" with an example.</p></div>
+<h2>From the lecture slides</h2>
+<ul>
+<li><b>An LM assigns a probability to text:</b> P(x⁽¹⁾…x⁽ᵀ⁾) = Π<sub>t</sub> P(x⁽ᵗ⁾ | x⁽ᵗ⁻¹⁾…x⁽¹⁾), the chain rule. LMs are a benchmark task and a sub-component of predictive typing, speech and handwriting recognition, spelling/grammar correction, authorship identification, MT, summarisation and dialogue. "ChatGPT is an LM!"</li>
+<li><b>What next-word prediction can teach</b> (slide): trivia ("Stanford University is located in ___, California"), syntax ("I put ___ fork down"), coreference ("…checking for traffic over ___ shoulder"), lexical semantics ("fish, turtles, seals, and ___"), sentiment ("The movie was ___"), reasoning (Iroh/Zuko), arithmetic (1, 1, 2, 3, 5, 8, 13, 21, ___).</li>
+<li><b>n-gram definitions:</b> unigrams "the", "students"…; bigrams "the students", "students opened"…; trigrams "the students opened"…; 4-gram "the students opened their". In practice n can't be much bigger than 5.</li>
+<li><b>Ideal LM distribution:</b> smooth, fine-grained, and able to distinguish between many reasonable next words. The trigram model's "company 0.153, bank 0.153" shows coarse granularity.</li>
+<li><b>Composition functions</b> (turning a prefix of word embeddings into one vector): element-wise sum, concatenation, feed-forward network, CNN, RNN, transformer.</li>
+<li><b>Each row of W</b> stores the weights that score how compatible the prefix is with one output word. That's why W has shape (vocab × input dim) = 4 × 3.</li>
+</ul>
+<h2 id="numericals">Numericals</h2>
+<h3 class="numh"><span class="tag-class">From class</span> Exact slide numbers</h3>
+<div class="box ex"><span class="lbl">C1. 4-gram counting</span>
+<p>"students opened their" = 1000, "…books" = 400, "…exams" = 100. P(books | students opened their) = <b>0.4</b>, P(exams | …) = <b>0.1</b>. (Should we have discarded "proctor"?)</p></div>
+<div class="box ex"><span class="lbl">C2. Trigram generation distributions (Reuters, 1.7M words)</span>
+<p>"today the" → company 0.153, bank 0.153, price 0.077, italian 0.039, emirate 0.039 → sample <i>price</i><br>
+"the price" → of 0.308, for 0.050, it 0.046, to 0.046, is 0.031 → sample <i>of</i><br>
+"price of" → the 0.072, 18 0.043, oil 0.043, its 0.036, gold 0.018 → sample <i>gold</i> → "today the price of gold per ton, while production of shoe lasts…"</p></div>
+<div class="box ex"><span class="lbl">C3. Neural output layer (slides 19–23)</span>
+<p>Vocabulary: books, houses, lamps, stamps. Target distribution &lt;0.6, 0.2, 0.1, 0.1&gt;. Prefix vector <b>x = &lt;−2.3, 0.9, 5.4&gt;</b>.</p>
+<div class="formula">W = [[1.2, −0.3, 0.9], [0.2, 0.4, −2.2], [8.9, −1.9, 6.5], [4.5, 2.2, −0.1]]</div>
+<p>Row 1: 1.2(−2.3) + (−0.3)(0.9) + 0.9(5.4) = −2.76 − 0.27 + 4.86 = <b>1.8</b>. Likewise Wx = <b>&lt;1.8, −11.9, 12.9, −8.9&gt;</b>.<br>
+The slide then uses Wx = &lt;1.8, −1.9, 2.9, −0.9&gt; to show softmax(Wx) = <b>&lt;0.24, 0.006, 0.73, 0.02&gt;</b>, so "lamps" is predicted, which doesn't match the target (books 0.6). The loss −log 0.24 drives the update.</p></div>
+<div class="box ex"><span class="lbl">C4. Fixed-window model dimensions</span>
+<p>Input: 4 one-hot words → concatenated embeddings e = [e⁽¹⁾; e⁽²⁾; e⁽³⁾; e⁽⁴⁾] → h = f(We + b₁) → ŷ = softmax(Uh + b₂).</p></div>
+
+<h3 class="numh"><span class="tag-prac">Practice</span> Same level</h3>
+<details class="sol"><summary class="q">P1. Compute rows 2 and 3 of Wx from the slide's W and x.</summary>
+<p>Row 2: 0.2(−2.3) + 0.4(0.9) + (−2.2)(5.4) = −0.46 + 0.36 − 11.88 = <b>−11.98 ≈ −11.9</b>. Row 3: 8.9(−2.3) + (−1.9)(0.9) + 6.5(5.4) = −20.47 − 1.71 + 35.1 = <b>12.92 ≈ 12.9</b>.</p></details>
+<details class="sol"><summary class="q">P2. Row 4 of Wx, and softmax of &lt;1.8, −1.9, 2.9, −0.9&gt;.</summary>
+<p>Row 4: 4.5(−2.3) + 2.2(0.9) + (−0.1)(5.4) = −10.35 + 1.98 − 0.54 = <b>−8.91</b>. Softmax: e^x = 6.05, 0.15, 18.17, 0.41 (sum 24.78) → <b>&lt;0.24, 0.006, 0.73, 0.016&gt;</b>.</p></details>
+<details class="sol"><summary class="q">P3. Using C2, what is the probability of generating "today the price of gold" given "today the"?</summary>
+<p>P(price|today the) × P(of|the price) × P(gold|price of) = 0.077 × 0.308 × 0.018 ≈ <b>0.00043</b>.</p></details>
+<details class="sol"><summary class="q">P4. "the price of" occurs 500 times, followed by gold 150, oil 100. P(gold), P(oil)?</summary>
+<p>0.30 and 0.20.</p></details>
+<details class="sol"><summary class="q">P5. Fixed window of 4 words, 300-d embeddings, hidden 500, vocabulary 10,000. Size of W and U?</summary>
+<p>W: 1,200 × 500 = <b>600,000</b>. U: 500 × 10,000 = <b>5,000,000</b>. Doubling the window to 8 doubles W.</p></details>

@@ -1,0 +1,173 @@
+<div class="tldr"><h3>In 30 seconds</h3><ul>
+<li><b>Entropy H(X)</b>: average surprise of one variable. Fair 8-sided die = 3 bits, fair coin = 1 bit.</li>
+<li><b>Joint entropy H(X,Y)</b>: information needed to describe both together.</li>
+<li><b>Conditional entropy H(Y|X)</b>: uncertainty left in Y once you know X. <b>Language modelling is built on this.</b></li>
+<li><b>Chain rule</b>: H(X,Y) = H(X) + H(Y|X), extendable to whole sentences.</li>
+<li><b>Mutual information I(X;Y)</b> = H(X) − H(X|Y): how much knowing one tells you about the other. It's 0 if they're independent. It finds collocations like <i>New Delhi</i>.</li>
+<li><b>KL divergence D(P‖Q)</b>: bits wasted by using the wrong distribution Q when the truth is P.</li>
+</ul></div>
+<h2>What each idea is for</h2>
+<div class="tbl-wrap"><table class="uses">
+<tr><th>Concept</th><th>What it's for</th><th>Where it's used</th></tr>
+<tr><td>Entropy H(X)</td><td>Uncertainty of one variable / minimum bits per outcome</td><td>Compression, decision trees, perplexity</td></tr>
+<tr><td>Joint entropy H(X,Y)</td><td>Uncertainty of two things together</td><td>Modelling word pairs, the chain rule</td></tr>
+<tr><td>Conditional entropy H(Y|X)</td><td>Uncertainty left after seeing context</td><td><b>Language modelling</b> (next word given history), feature usefulness</td></tr>
+<tr><td>Chain rule</td><td>Breaks a whole sentence into word-by-word pieces</td><td>How LMs score full sentences</td></tr>
+<tr><td>Mutual information</td><td>How much two variables tell you about each other</td><td>Finding collocations (New Delhi), feature selection, CLIP-style vision-language training</td></tr>
+<tr><td>KL divergence</td><td>How far a model's distribution is from the truth</td><td>Cross-entropy loss, domain shift, distillation, RLHF penalties</td></tr>
+<tr><td>Intrinsic / extrinsic evaluation</td><td>Two ways to judge a system: internal metric vs real task</td><td>Benchmarking any NLP model</td></tr>
+</table></div>
+
+
+<h2>Warm-up: computing entropy</h2>
+<div class="formula">H(X) = − Σ p(x) log₂ p(x)</div>
+<div class="box ex"><span class="lbl">Worked example 1: a fair 8-sided die</span>
+<p>8 outcomes, each with p = 1/8.</p>
+<div class="formula">H = − 8 × (1/8) × log₂(1/8) = − log₂(1/8) = log₂ 8 = <b>3 bits</b></div>
+<p>Meaning: a 3-digit binary code (000…111) is the shortest message that can report every roll.</p></div>
+<div class="box ex"><span class="lbl">Worked example 2: a fair coin</span>
+<div class="formula">H = − [½ log₂ ½ + ½ log₂ ½] = <b>1 bit</b></div>
+<p>One bit (0 = heads, 1 = tails) is enough.</p></div>
+<div class="box ex"><span class="lbl">Worked example 3: a biased coin (90% heads)</span>
+<div class="formula">H = − [0.9 log₂ 0.9 + 0.1 log₂ 0.1] ≈ 0.9(0.152) + 0.1(3.322) ≈ <b>0.469 bits</b></div>
+<p>Less than 1 bit, because the outcome is fairly predictable.</p></div>
+
+<figure class="diagram">
+<svg viewBox="0 0 500 240" xmlns="http://www.w3.org/2000/svg" font-family="Inter,sans-serif" font-size="12" fill="currentColor">
+<path d="M40 200 H450 M40 200 V20" stroke="currentColor" opacity=".5"/>
+<polyline fill="none" stroke="#3d5afe" stroke-width="3" points="40,200 80,120 120,77 160,50 200,35 240,30 280,35 320,50 360,77 400,120 440,200"/>
+<text x="40" y="216" text-anchor="middle">0</text><text x="240" y="216" text-anchor="middle">0.5</text><text x="440" y="216" text-anchor="middle">1</text>
+<text x="30" y="34" text-anchor="end">1 bit</text><text x="30" y="204" text-anchor="end">0</text>
+<text x="245" y="234" text-anchor="middle">P(heads)</text>
+<text x="240" y="22" text-anchor="middle">max uncertainty at p = 0.5</text>
+<text x="60" y="190">certain</text><text x="385" y="190">certain</text>
+</svg><figcaption>Entropy of a coin vs the probability of heads. Zero when the outcome is certain (p = 0 or 1), maximum (1 bit) when both sides are equally likely.</figcaption></figure>
+
+<p>Note that for the die and the coin we never talk about <i>history</i>. Each roll is on its own. Language, though, <b>depends on history</b> ("a small oblong reading lamp on the…"). So we need entropies that take context into account.</p>
+
+<h2>Joint entropy H(X, Y)</h2>
+<p>The average information needed to specify <b>both</b> values together, e.g. the word pair <i>New</i> + <i>Delhi</i> as a unit.</p>
+<div class="formula">H(X, Y) = − Σ<sub>x</sub> Σ<sub>y</sub> p(x, y) log₂ p(x, y)</div>
+
+<h2>Conditional entropy H(Y | X): the heart of language modelling</h2>
+<p>How much <b>extra</b> information, on average, you still need to communicate Y <b>when you already know X</b>.</p>
+<div class="box an"><span class="lbl">Analogy: weather and umbrella</span>
+<p>X = the weather, Y = "do I carry an umbrella?". If you don't know the weather, you're unsure. Once you know it's <b>raining</b>, you're almost certain. Knowing X <b>reduced the uncertainty</b> in Y.</p></div>
+<p><b>Building the formula.</b> For each possible value x, compute the entropy of Y in that situation, H(Y | X = x). Then take the <b>weighted average</b>, weighting by how often each x happens:</p>
+<div class="formula">H(Y|X) = Σ<sub>x</sub> p(x) · H(Y | X = x)</div>
+<p>Expand H(Y | X = x) = − Σ<sub>y</sub> p(y|x) log₂ p(y|x), then use p(x)·p(y|x) = p(x, y):</p>
+<div class="formula">H(Y|X) = − Σ<sub>x</sub> Σ<sub>y</sub> p(x) p(y|x) log₂ p(y|x) = <b>− Σ<sub>x,y</sub> p(x, y) log₂ p(y | x)</b></div>
+<p>Common mistake (made in class too): writing p(y|x) in front instead of p(x,y). The weights must be the <b>joint</b> probabilities.</p>
+
+<div class="box ex"><span class="lbl">Worked example: umbrella numbers</span>
+<p>Weather: P(sunny) = 0.5, P(rain) = 0.5.<br>
+If sunny: P(umbrella) = 0.1. If rainy: P(umbrella) = 0.9.</p>
+<ol class="steps">
+<li>H(Y | sunny) = −[0.1 log₂0.1 + 0.9 log₂0.9] ≈ 0.469 bits</li>
+<li>H(Y | rain) = −[0.9 log₂0.9 + 0.1 log₂0.1] ≈ 0.469 bits</li>
+<li>H(Y | X) = 0.5 × 0.469 + 0.5 × 0.469 = <b>0.469 bits</b></li>
+<li>Without knowing the weather: P(umbrella) = 0.5×0.1 + 0.5×0.9 = 0.5, so H(Y) = <b>1 bit</b>.</li>
+</ol>
+<p>Knowing the weather cut the uncertainty from 1 bit to 0.469 bits.</p></div>
+
+<h2>The chain rule</h2>
+<p>Just as probability factorises, p(x, y) = p(x) · p(y | x), so does entropy:</p>
+<div class="formula">H(X, Y) = H(X) + H(Y | X) &nbsp;&nbsp; (and symmetrically = H(Y) + H(X | Y))</div>
+<details><summary>Derivation (step by step)</summary>
+<p>H(X,Y) = −E[log₂ p(X,Y)] = −E[log₂ (p(X)·p(Y|X))] = −E[log₂ p(X)] − E[log₂ p(Y|X)] = H(X) + H(Y|X). <br>(Uses log(ab) = log a + log b: products become sums.)</p></details>
+<p>In words: <i>the information needed for X and Y together = the information for X + the extra information for Y once X is known.</i></p>
+<p>For a whole sentence of n words:</p>
+<div class="formula">H(X₁, …, Xₙ) = H(X₁) + H(X₂|X₁) + H(X₃|X₁,X₂) + … + H(Xₙ|X₁…Xₙ₋₁)</div>
+<div class="box ex"><span class="lbl">Example</span><p>"John went to Patna": X₁ = John, X₂ = went, X₃ = to, X₄ = Patna. The joint entropy of the sentence is the sum of each word's entropy <i>given all the previous words</i>. This is exactly how language models score sentences (topic 07).</p></div>
+<p>Umbrella check: H(X,Y) = H(X) + H(Y|X) = 1 + 0.469 = 1.469 bits.</p>
+
+<!--viz:chain-rule-->
+<figure class="diagram viz" id="fig-chain-rule"><svg class="vz" viewBox="0 0 680 150" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The chain rule as a bar: knowing X first removes H(X) of the uncertainty; the rest, H(Y | X), is what a language model tries to make small." style="max-width:680px" font-family="Inter,system-ui,sans-serif" font-size="13"><rect x="40.0" y="40.0" width="600.0" height="40.0" rx="6" class="c1o"/><text x="340.0" y="65.0" text-anchor="middle" class="hmt" font-size="13" font-weight="700">H(X, Y)  — total uncertainty of the pair</text><rect x="40.0" y="95.0" width="260.0" height="40.0" rx="6" class="c3o"/><text x="170.0" y="120.0" text-anchor="middle" class="hmt" font-size="13" font-weight="700">H(X)</text><rect x="300.0" y="95.0" width="340.0" height="40.0" rx="6" class="c4o"/><text x="470.0" y="120.0" text-anchor="middle" class="hmt" font-size="13" font-weight="700">H(Y | X): what is left after X</text><text x="340.0" y="25.0" text-anchor="middle" class="" font-size="13" font-weight="700">Chain rule:  H(X, Y) = H(X) + H(Y | X)</text></svg><figcaption>The chain rule as a bar: knowing X first removes H(X) of the uncertainty; the rest, H(Y | X), is what a language model tries to make small.</figcaption></figure>
+<!--/viz:chain-rule-->
+<h2>Mutual information I(X; Y)</h2>
+<p><b>How much uncertainty about one variable disappears when you learn the other</b>, i.e. how much information they share.</p>
+<div class="formula">I(X; Y) = H(X) − H(X | Y) = H(Y) − H(Y | X)</div>
+<div class="formula">I(X; Y) = Σ<sub>x,y</sub> p(x, y) · log₂ [ p(x, y) / (p(x) · p(y)) ]</div>
+
+<figure class="diagram">
+<svg viewBox="0 0 460 200" xmlns="http://www.w3.org/2000/svg" font-family="Inter,sans-serif" font-size="13" fill="currentColor">
+<circle cx="170" cy="100" r="80" fill="#3d5afe" fill-opacity=".15" stroke="#3d5afe"/>
+<circle cx="290" cy="100" r="80" fill="#b4235a" fill-opacity=".15" stroke="#b4235a"/>
+<text x="130" y="104" text-anchor="middle">H(X|Y)</text><text x="230" y="104" text-anchor="middle" font-weight="700">I(X;Y)</text><text x="330" y="104" text-anchor="middle">H(Y|X)</text>
+<text x="120" y="20" text-anchor="middle">H(X)</text><text x="340" y="20" text-anchor="middle">H(Y)</text>
+<text x="230" y="195" text-anchor="middle" font-size="12">the whole shape = H(X,Y)</text>
+</svg><figcaption>The overlap of the two circles is the mutual information.</figcaption></figure>
+
+<div class="box ex"><span class="lbl">Worked example: umbrella again</span>
+<p>I(weather; umbrella) = H(Y) − H(Y|X) = 1 − 0.469 = <b>0.531 bits</b>. Knowing the weather tells you about half a bit about the umbrella.</p></div>
+
+<div class="box key"><span class="lbl">If X and Y are independent</span>
+<p>Then p(x, y) = p(x)·p(y), so the ratio inside the log is 1 and log 1 = 0. <b>I(X;Y) = 0</b>: neither tells you anything about the other.</p></div>
+
+<div class="box ex"><span class="lbl">Example: studying and passing</span>
+<p>X = did the student study, Y = did the student pass. If they're unrelated, MI = 0. If almost everyone who passed studied and almost everyone who failed didn't, then seeing Y tells you a lot about X, and MI is high.</p></div>
+
+<div class="box ex"><span class="lbl">Example: language, "New ___"</span>
+<p>Seeing <i>New</i> greatly increases the probability of <i>Delhi</i>: P(Delhi | New) ≫ P(Delhi). The choices shrink, so entropy drops, so <i>New</i> and <i>Delhi</i> share a lot of mutual information.</p>
+<p><b>Collocations vs ordinary associations:</b> "New car" and "new dress" are ordinary adjective + noun combinations. "New Delhi", "New York", "fast food" and "to-do" are <b>collocations</b>: fixed pairs that almost always appear together. In practice, the pointwise version, log₂[p(x,y)/(p(x)p(y))] for one specific pair, is used to find them.</p></div>
+
+<div class="box exam"><span class="lbl">Exam question flagged in class: prove MI is symmetric</span>
+<p><b>Show I(X;Y) = I(Y;X).</b></p>
+<p>Using the probability form: I(X;Y) = Σ p(x,y) log [p(x,y) / (p(x)p(y))]. Swapping X and Y changes nothing, because p(x,y) = p(y,x) and p(x)p(y) = p(y)p(x).</p>
+<p>Using entropies: by the chain rule, H(X,Y) = H(X) + H(Y|X) = H(Y) + H(X|Y). Rearranging, H(X) − H(X|Y) = H(Y) − H(Y|X). The left side is I(X;Y) and the right side is I(Y;X). ∎</p>
+<p>Practise writing this out by hand. It's easier said than done.</p></div>
+
+<h2>Relative entropy, a.k.a. KL divergence</h2>
+<p>Compares <b>two probability distributions P and Q over the same set of events</b>. (Comparing distributions over different event spaces is apples vs oranges.)</p>
+<div class="formula">D(P ‖ Q) = Σ<sub>x</sub> P(x) · log₂ [ P(x) / Q(x) ]</div>
+<p><b>Meaning:</b> the average number of <b>bits wasted</b> if events actually come from P but you use a code designed for Q.</p>
+<div class="box an"><span class="lbl">Analogy: the wrong map</span><p>You plan a trip around Delhi using a New York traffic model. You'll take longer routes on average. The extra cost is the KL divergence. Likewise, a model trained on New York data may fit Indian data badly.</p></div>
+<div class="box ex"><span class="lbl">Worked example</span>
+<p>True coin P = (0.5, 0.5). Your model Q = (0.9, 0.1).</p>
+<div class="formula">D(P‖Q) = 0.5·log₂(0.5/0.9) + 0.5·log₂(0.5/0.1) ≈ 0.5(−0.848) + 0.5(2.322) ≈ <b>0.737 bits</b></div>
+<p>If Q = P, the divergence is 0. KL is <b>not symmetric</b>: D(P‖Q) ≠ D(Q‖P) in general.</p></div>
+
+<!--viz:kl-->
+<figure class="diagram viz" id="fig-kl"><svg class="vz" viewBox="0 0 520 255" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="KL divergence measures the extra bits you pay for coding data from P with a code built for Q. Here H(P) = 1.75 bits but the uniform code costs 2 bits, so D(P‖Q) = 0.25. It is 0 only when P = Q." style="max-width:520px" font-family="Inter,system-ui,sans-serif" font-size="13"><line x1="60.0" y1="210.0" x2="480.0" y2="210.0" class="grid" stroke-width="1"/><text x="54.0" y="214.0" text-anchor="end" class="mut" font-size="11">0.0</text><line x1="60.0" y1="150.0" x2="480.0" y2="150.0" class="grid" stroke-width="1"/><text x="54.0" y="154.0" text-anchor="end" class="mut" font-size="11">0.2</text><line x1="60.0" y1="90.0" x2="480.0" y2="90.0" class="grid" stroke-width="1"/><text x="54.0" y="94.0" text-anchor="end" class="mut" font-size="11">0.4</text><line x1="60.0" y1="30.0" x2="480.0" y2="30.0" class="grid" stroke-width="1"/><text x="54.0" y="34.0" text-anchor="end" class="mut" font-size="11">0.6</text><line x1="60.0" y1="210.0" x2="480.0" y2="210.0" class="ax" stroke-width="1.2"/><line x1="60.0" y1="30.0" x2="60.0" y2="210.0" class="ax" stroke-width="1.2"/><text x="270.0" y="246.0" text-anchor="middle" class="mut" font-size="12">outcome</text><text x="18.0" y="120.0" text-anchor="middle" class="mut" font-size="12" transform="rotate(-90 18 120.0)">probability</text><rect x="72.0" y="60.0" width="38.5" height="150.0" rx="3" class="c1"/><rect x="114.5" y="135.0" width="38.5" height="75.0" rx="3" class="c4"/><text x="112.5" y="226.0" text-anchor="middle" class="mut" font-size="12">a</text><rect x="177.0" y="135.0" width="38.5" height="75.0" rx="3" class="c1"/><rect x="219.5" y="135.0" width="38.5" height="75.0" rx="3" class="c4"/><text x="217.5" y="226.0" text-anchor="middle" class="mut" font-size="12">b</text><rect x="282.0" y="172.5" width="38.5" height="37.5" rx="3" class="c1"/><rect x="324.5" y="135.0" width="38.5" height="75.0" rx="3" class="c4"/><text x="322.5" y="226.0" text-anchor="middle" class="mut" font-size="12">c</text><rect x="387.0" y="172.5" width="38.5" height="37.5" rx="3" class="c1"/><rect x="429.5" y="135.0" width="38.5" height="75.0" rx="3" class="c4"/><text x="427.5" y="226.0" text-anchor="middle" class="mut" font-size="12">d</text><rect x="360" y="31" width="14" height="10" rx="2" class="c1"/><text x="380.0" y="40.0" text-anchor="start" class="" font-size="11">true P = (½, ¼, ⅛, ⅛)</text><rect x="360" y="49" width="14" height="10" rx="2" class="c4"/><text x="380.0" y="58.0" text-anchor="start" class="" font-size="11">model Q = uniform</text><text x="270.0" y="18.0" text-anchor="middle" class="ex" font-size="13" font-weight="700">D(P‖Q) = Σ p log₂(p/q) = 0.25 bits</text></svg><figcaption>KL divergence measures the extra bits you pay for coding data from P with a code built for Q. Here H(P) = 1.75 bits but the uniform code costs 2 bits, so D(P‖Q) = 0.25. It is 0 only when P = Q.</figcaption></figure>
+<!--/viz:kl-->
+<h2>How do we evaluate any system?</h2>
+<div class="two">
+<div class="card"><h4>Intrinsic evaluation</h4><p>Measure against a ground truth with an internal metric: accuracy, entropy, perplexity, mutual information.</p></div>
+<div class="card"><h4>Extrinsic evaluation</h4><p>Put it in a real task and compare with what humans do.</p></div>
+</div>
+
+<div class="box exam"><span class="lbl">Exam tip</span>
+<p>The professor said you <b>may get derivation questions</b>: conditional entropy (weighted average → joint form), the chain rule, MI symmetry. Also know: entropy of a die or coin, why entropy alone says nothing about sequences (use conditional entropy), and what KL measures.</p></div>
+<div class="box try"><span class="lbl">Try it</span>
+<p>A loaded 4-sided die has probabilities (½, ¼, ⅛, ⅛). Show H = 1.75 bits. (Hint: surprisals are 1, 2, 3, 3 bits.)</p></div>
+<h2>From the lecture slides</h2>
+<ul>
+<li>KL divergence has two equivalent forms on the slide: D(p‖q) = Σ p(x) log [p(x)/q(x)] = <b>E<sub>p</sub>[ log p(X)/q(X) ]</b>, i.e. the expected log-ratio under the true distribution p.</li>
+<li>The conditional-entropy derivation slide ends with the identity <b>p(x, y) = p(x) p(y|x)</b>, the one step that turns Σ<sub>x</sub> p(x) Σ<sub>y</sub> p(y|x) log p(y|x) into −Σ p(x,y) log p(y|x).</li>
+<li>MI slide: "mutual information is literally the part of uncertainty that the two variables share" (the overlap of the Venn diagram). It's very useful for word associations and collocations.</li>
+<li>The slide's summary: entropy → joint entropy → conditional entropy → chain rule → mutual information → relative entropy.</li>
+</ul>
+<h2 id="numericals">Numericals</h2>
+<h3 class="numh"><span class="tag-class">From class</span> Worked in the lecture</h3>
+<div class="box ex"><span class="lbl">C1. Entropy of rolling a fair 8-sided die (class activity 1)</span>
+<p>H = −Σ ⅛ log₂ ⅛ = log₂8 = <b>3 bits</b>.</p></div>
+<div class="box ex"><span class="lbl">C2. Entropy of tossing a fair coin (class activity 2)</span>
+<p>H = −(½ log₂½ + ½ log₂½) = <b>1 bit</b>.</p></div>
+<div class="box ex"><span class="lbl">C3. Binary entropy at the extremes</span>
+<p>P(heads) = 1 → H = −1·log₂1 = <b>0</b>. P(heads) = 0 → also 0 (tails is certain). P(heads) = 0.5 → <b>1 bit</b> (maximum).</p></div>
+<div class="box ex"><span class="lbl">C4. MI when X and Y are independent</span>
+<p>p(x,y) = p(x)p(y), so log[p(x,y)/(p(x)p(y))] = log 1 = 0, so <b>I(X;Y) = 0</b>.</p></div>
+<div class="box ex"><span class="lbl">C5. Prove I(X;Y) = I(Y;X) (assigned in class)</span>
+<p>Chain rule both ways: H(X) + H(Y|X) = H(X,Y) = H(Y) + H(X|Y). Rearrange: H(X) − H(X|Y) = H(Y) − H(Y|X), i.e. I(X;Y) = I(Y;X). ∎</p></div>
+
+<h3 class="numh"><span class="tag-prac">Practice</span> Same level</h3>
+<details class="sol"><summary class="q">P1. Joint table: p(0,0) = 0.4, p(0,1) = 0.1, p(1,0) = 0.1, p(1,1) = 0.4. Find H(X), H(Y), H(X,Y), H(Y|X) and I(X;Y).</summary>
+<p>Marginals are (0.5, 0.5) for both, so H(X) = H(Y) = <b>1 bit</b>.<br>
+H(X,Y) = −[2·0.4 log₂0.4 + 2·0.1 log₂0.1] = 0.8(1.322) + 0.2(3.322) ≈ <b>1.722 bits</b>.<br>
+H(Y|X) = H(X,Y) − H(X) ≈ <b>0.722</b>. I = H(Y) − H(Y|X) ≈ <b>0.278 bits</b>.</p></details>
+<details class="sol"><summary class="q">P2. Show KL isn't symmetric: P = (0.5, 0.5), Q = (0.9, 0.1). Compute D(Q‖P).</summary>
+<p>D(Q‖P) = 0.9 log₂(0.9/0.5) + 0.1 log₂(0.1/0.5) = 0.9(0.848) + 0.1(−2.322) ≈ <b>0.531 bits</b>, while D(P‖Q) ≈ 0.737. Not equal.</p></details>
+<details class="sol"><summary class="q">P3. Entropy of a uniform distribution over the 26 letters?</summary>
+<p>log₂26 ≈ <b>4.70 bits</b>.</p></details>
+<details class="sol"><summary class="q">P4. Weather: P(sunny) = 0.5, P(rain) = 0.5. P(umbrella|rain) = 0.9, P(umbrella|sunny) = 0.1. Find H(Y|X) and I.</summary>
+<p>Each case has entropy H(0.9, 0.1) ≈ 0.469, so H(Y|X) ≈ <b>0.469</b>. H(Y) = 1 (P(umbrella) = 0.5), so I ≈ <b>0.531 bits</b>. (Worked out fully above.)</p></details>

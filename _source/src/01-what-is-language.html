@@ -1,0 +1,148 @@
+<div class="tldr"><h3>In 30 seconds</h3><ul>
+<li>Language is a <b>window to the mind</b>: it turns messy private thoughts into organised, shareable symbols.</li>
+<li>It has layers: <b>sounds → words → sentences → meaning → use in context</b> (phonology, morphology, syntax, semantics, pragmatics).</li>
+<li>Every symbol is a <b>form–meaning pair</b>: the word "cat" isn't a cat, it's a key that unlocks your <i>concept</i> of a cat.</li>
+<li>Language doesn't copy reality. It helps the listener <b>rebuild</b> it ("projected reality").</li>
+<li>Because symbols are flexible, language is also <b>ambiguous</b>, and that's the central headache of NLP.</li>
+</ul></div>
+<h2>What each idea is for</h2>
+<div class="tbl-wrap"><table class="uses">
+<tr><th>Concept</th><th>What it's for</th><th>Where it's used</th></tr>
+<tr><td>Levels of language</td><td>Breaks the problem into layers you can study and model separately</td><td>Each NLP task sits at one level: speech recognition (phonology), lemmatisers (morphology), parsers (syntax), sentiment (semantics), chatbots (pragmatics)</td></tr>
+<tr><td>Symbolic function</td><td>Explains how words stand in for ideas, so machines can manipulate symbols</td><td>Tokens, vocabularies, word IDs</td></tr>
+<tr><td>Interactive function</td><td>Language as a tool for getting things done between people</td><td>Dialogue systems, persuasion and negotiation bots</td></tr>
+<tr><td>Form–meaning pairing</td><td>The basic unit an NLP model has to learn: which form maps to which meaning</td><td>Word embeddings, dictionaries, sign-language and emoji understanding</td></tr>
+<tr><td>Inner vs outer world / concepts</td><td>Shows why perception (vision) and language need to be linked</td><td>Vision-language models: image captioning, visual question answering</td></tr>
+<tr><td>Projected reality</td><td>The listener reconstructs meaning, so context and world knowledge matter</td><td>Why models need context windows and world knowledge</td></tr>
+<tr><td>Ambiguity</td><td>Names the core difficulty every NLP system has to resolve</td><td>Word-sense disambiguation, parsing, machine translation</td></tr>
+<tr><td>Recursion (Pirahã)</td><td>Shows that language structure can nest without limit, and that languages differ in this</td><td>Parsers, grammar design, cross-lingual NLP</td></tr>
+</table></div>
+
+
+<h2>Why start with "what is language"?</h2>
+<p>We use language all day, so we take it for granted, the way a fish doesn't notice water. The professor's warning was a good one: a lot of AI today just pours text into models without asking how language actually works. If we understand the machine we're copying (the human mind), we'll design better algorithms. So before any maths, let's look at what language <i>is</i>.</p>
+
+<div class="box an"><span class="lbl">Analogy: the messy room</span>
+<p>Sit still, close your eyes, and watch your thoughts. They pop up randomly, half-formed and overlapping, like clothes thrown around a messy room. Language is the act of <b>tidying the room</b>: putting each idea in a labelled drawer and in a sensible order. Once things are organised, they start to <b>mean</b> something, to you and to anyone you show the room to.</p></div>
+
+<p>So language does two jobs at once:</p>
+<ol>
+<li><b>It expresses thought.</b> Idea → concept → you say it out loud using some medium (speech, writing, signs).</li>
+<li><b>It structures thought.</b> Organising ideas is what gives them meaning.</li>
+</ol>
+
+<h2>The layers of language</h2>
+<p>Think of language as a building with floors. Each floor is built from the one below it.</p>
+<div class="tbl-wrap"><table>
+<tr><th>Level</th><th>Studies…</th><th>Everyday example</th></tr>
+<tr><td><b>Phonetics / Phonology</b></td><td>sounds and syllables</td><td>"cat" = /k/ + /æ/ + /t/</td></tr>
+<tr><td><b>Morphology</b></td><td>how words are built from pieces</td><td>dis + taste = "distaste" (prefix <i>dis-</i> flips the meaning)</td></tr>
+<tr><td><b>Syntax</b></td><td>how words combine into phrases and sentences</td><td>"The cat sat" ✔ vs "Sat cat the" ✘</td></tr>
+<tr><td><b>Semantics</b></td><td>meaning</td><td>"bachelor" means "unmarried man"</td></tr>
+<tr><td><b>Pragmatics</b></td><td>meaning <i>in context</i>: which sentence to use, when and why</td><td>"Can you pass the salt?" is a request, not a question about your ability</td></tr>
+</table></div>
+
+<div class="box ex"><span class="lbl">Example: pragmatics in action</span>
+<p><b>"I sat near the bank."</b> A finance person pictures SBI; a nature lover pictures the bank of the Ganga. The words are the same, and only <b>context</b> settles it. Pragmatics studies exactly this: context, discourse, and how sentences fit together coherently.</p>
+<p>The professor's Hindi example: if you've just been talking about India ("India is a great nation… it has many states…"), then <i>"Bharat ke pradhan mantri Narendra Modi hain"</i> (India's PM is Modi) sounds natural, while flipping the order to start with the name sounds odd. Both sentences are grammatical, but only one fits the flow. You'll find the same thing in Telugu, Malayalam, Kannada or any language you speak.</p></div>
+
+<!--viz:lang-layers-->
+<figure class="diagram viz" id="fig-lang-layers"><svg class="vz" viewBox="0 0 800 285" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The layers of language, from raw sound (bottom) to meaning in context (top). NLP systems work at every level: speech recognition at the bottom, chatbots at the top." style="max-width:800px" font-family="Inter,system-ui,sans-serif" font-size="13"><rect x="220.0" y="20.0" width="260.0" height="36.0" rx="8" class="bx1"/><text x="350.0" y="36.0" text-anchor="middle" class="" font-size="13" font-weight="700">Pragmatics &amp; discourse</text><text x="350.0" y="50.0" text-anchor="middle" class="mut" font-size="10.5">what the speaker means in context</text><rect x="185.0" y="62.0" width="330.0" height="36.0" rx="8" class="bx"/><text x="350.0" y="78.0" text-anchor="middle" class="" font-size="13" font-weight="700">Semantics</text><text x="350.0" y="92.0" text-anchor="middle" class="mut" font-size="10.5">meaning of words &amp; sentences</text><rect x="150.0" y="104.0" width="400.0" height="36.0" rx="8" class="bx1"/><text x="350.0" y="120.0" text-anchor="middle" class="" font-size="13" font-weight="700">Syntax</text><text x="350.0" y="134.0" text-anchor="middle" class="mut" font-size="10.5">how words combine into phrases</text><rect x="115.0" y="146.0" width="470.0" height="36.0" rx="8" class="bx"/><text x="350.0" y="162.0" text-anchor="middle" class="" font-size="13" font-weight="700">Morphology</text><text x="350.0" y="176.0" text-anchor="middle" class="mut" font-size="10.5">word parts: un-break-able</text><rect x="80.0" y="188.0" width="540.0" height="36.0" rx="8" class="bx1"/><text x="350.0" y="204.0" text-anchor="middle" class="" font-size="13" font-weight="700">Phonology</text><text x="350.0" y="218.0" text-anchor="middle" class="mut" font-size="10.5">sound patterns of a language</text><rect x="45.0" y="230.0" width="610.0" height="36.0" rx="8" class="bx"/><text x="350.0" y="246.0" text-anchor="middle" class="" font-size="13" font-weight="700">Phonetics</text><text x="350.0" y="260.0" text-anchor="middle" class="mut" font-size="10.5">physical speech sounds</text><line x1="690.0" y1="270.0" x2="690.0" y2="30.0" class="ar" stroke-width="2"/><polygon points="690.0,30.0 693.1,37.4 686.9,37.4" class="arf"/><text x="700.0" y="150.0" text-anchor="start" class="mut" font-size="11">more abstract</text></svg><figcaption>The layers of language, from raw sound (bottom) to meaning in context (top). NLP systems work at every level: speech recognition at the bottom, chatbots at the top.</figcaption></figure>
+<!--/viz:lang-layers-->
+<h2>What do we use language for?</h2>
+<p>Talking to friends, shopping, bargaining, persuading. Language is also not the <i>only</i> way to communicate: there's sign language, Morse code, pictures, gestures, even Bluetooth between two phones. What makes human language special is how compact and effective it is.</p>
+<div class="box ex"><span class="lbl">Example: three words, a lot of meaning</span>
+<p><b>"Let's meet tomorrow."</b> In three words you've said <i>when</i> (not next month, tomorrow), shown urgency, and made a firm, assertive proposal. That's how efficient language is.</p></div>
+
+<p>Communication needs two parties: a <b>sender (encoder)</b> who packs the idea into words, and a <b>receiver (decoder)</b> who unpacks it. Language does this through two kinds of function:</p>
+<div class="two">
+<div class="card"><h4>1. Symbolic function</h4><p>Language <b>labels concepts</b> with symbols. Want to talk about a tree? Use the word <i>tree</i>. Something abstract like <i>justice</i> or <i>freedom</i>? There's a word for that too. Symbols combine into bigger ideas, and the thing doesn't need to be present: you can talk about a lion without one in the room.</p></div>
+<div class="card"><h4>2. Interactive function</h4><p>Language is how we <b>get things done with other people</b>: persuading, explaining, asking. It's a "two-body problem": the speaker wants to save effort (less jaw movement, shorter sentences) but also wants the listener to understand. Every sentence is a small trade-off between the two.</p></div>
+</div>
+
+<h2>Symbols, forms and meaning</h2>
+<p>Language expresses itself through <b>symbols</b>: letters, numbers, prefixes, words, phrases, whole sentences. Even a logical statement like <i>"If it rains tomorrow, I won't go to class"</i> is one big symbol for an if–then idea.</p>
+<p>The concrete shape a symbol takes is its <b>form</b>: spoken, written, or signed. Like clay that can be moulded into many shapes, one idea can take many forms.</p>
+
+<div class="box key"><span class="lbl">Key idea: form–meaning pairing</span>
+<p>A form is only useful if it's paired with a meaning that others also accept. That pairing, <b>form + meaning</b>, is the basic unit of language. "Meaning" here means an idea your mind understands and that is <b>conventionally accepted</b> by the people you're talking to.</p></div>
+
+<div class="box ex"><span class="lbl">Example: the dollar sign</span>
+<p>Why does <b>$</b> make you think "money" when there's no money in front of you? Because you've learned the convention that this form pairs with that meaning. Same with ₹.</p></div>
+
+<h2>Inner world vs outer world</h2>
+<p>Language doesn't represent the outside world directly. It represents <b>our conceptualised experience</b> of it. There's an <b>outer world</b> (what's out there) and an <b>inner world</b> (what's in your head), and language is the bridge between them.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 760 150" xmlns="http://www.w3.org/2000/svg" font-family="Inter,sans-serif" font-size="14">
+<defs><marker id="ar" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+<g fill="none" stroke="currentColor" stroke-width="1.5" style="color:#3d5afe">
+<rect x="10" y="45" width="120" height="60" rx="10"/><rect x="170" y="45" width="120" height="60" rx="10"/><rect x="330" y="45" width="120" height="60" rx="10"/><rect x="490" y="45" width="120" height="60" rx="10"/><rect x="650" y="45" width="100" height="60" rx="10"/>
+<path d="M130 75 H168" marker-end="url(#ar)"/><path d="M290 75 H328" marker-end="url(#ar)"/><path d="M450 75 H488" marker-end="url(#ar)"/><path d="M610 75 H648" marker-end="url(#ar)"/>
+</g>
+<g fill="currentColor" text-anchor="middle"><text x="70" y="72">World out</text><text x="70" y="90">there 🐈</text>
+<text x="230" y="72">Perception</text><text x="230" y="90">shape, fur…</text>
+<text x="390" y="72">Concept</text><text x="390" y="90">"a cat"</text>
+<text x="550" y="72">Meaning</text><text x="550" y="90">matches memory</text>
+<text x="700" y="72">Form</text><text x="700" y="90">"cat"</text></g>
+<text x="380" y="135" text-anchor="middle" fill="currentColor" font-size="12" opacity=".7">Outer world → senses → concept → linguistic meaning → a word you can say</text>
+</svg>
+<figcaption>How seeing a cat becomes the word "cat".</figcaption></figure>
+
+<div class="box ex"><span class="lbl">Example: the pear</span>
+<p>Hold a pear. Different parts of your brain register its <b>shape, colour, texture, taste and smell</b>. These are <b>percepts</b>, raw signals. Your brain combines them into one mental image and matches it against a concept you already have: <b>"pear"</b>. Only then does the concept get linked to a meaning and a form (the word, or a picture, or a gesture).</p>
+<p><b>Perception vs meaning:</b> you can perceive plenty of things you have no concept for. Without a concept, the signals are just noise. The concept is what connects perception to meaning.</p></div>
+
+<div class="box an"><span class="lbl">Analogy: if you weren't allowed to say "fear"</span>
+<p>The professor asked: you saw a dangerous animal and felt fear. Now you can't use <i>fear, scared, afraid</i>, or any similar word. What do you do? Students suggested the colour red, a skull symbol, gestures, or just keeping your distance. Point: <b>one concept can be expressed through many different forms.</b></p></div>
+
+<h2>Projected reality: language rebuilds, it doesn't transmit</h2>
+<div class="box key"><span class="lbl">Key idea</span><p>Language doesn't send reality from my head to yours. It sends <b>symbols</b> that let you <b>reconstruct</b> a version of reality. This is called <b>projected reality</b>.</p></div>
+<p>That's how we can talk about things that aren't in front of us, or don't exist at all. Grammar gives us tools for each kind of reality:</p>
+<div class="tbl-wrap"><table>
+<tr><th>Type of reality</th><th>Language tool</th><th>Example</th></tr>
+<tr><td>Present</td><td>present continuous (<i>is …-ing</i>)</td><td>The cat <b>is sleeping</b>.</td></tr>
+<tr><td>Past</td><td>past tense (<i>was</i>)</td><td>The cat <b>was sleeping</b>.</td></tr>
+<tr><td>Imagined</td><td>ordinary words in impossible combinations</td><td>A talking banana. A cat flying over the moon. A city on Mars.</td></tr>
+<tr><td>Abstract</td><td>abstract nouns, symbols</td><td><i>Justice</i> is important. (Symbol for peace: a white dove.)</td></tr>
+</table></div>
+
+<h2>The catch: symbols can be ambiguous</h2>
+<p>The same flexibility that makes language powerful also makes it confusing.</p>
+<div class="box ex"><span class="lbl">Example 1: "The cat jumped over the wall"</span>
+<p>Did the cat leap across to the other side? Jump up and land on top? The word <b>over</b> allows several readings, and <b>jump</b> says nothing about the shape of the path. Students drew different pictures for the same sentence.</p></div>
+<div class="box ex"><span class="lbl">Example 2: "John saw Mary with a telescope"</span>
+<p>(a) John used a telescope to see Mary (two ships at sea). (b) John saw Mary, who happened to be carrying her new telescope. The culprit is the phrase <i>"with a telescope"</i>, which can attach to John or to Mary. We'll meet this again as <b>structural ambiguity</b> in topics 03 and 08.</p></div>
+
+<!--viz:pp-attach-->
+<figure class="diagram viz" id="fig-pp-attach"><svg class="vz" viewBox="0 0 780 195" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="One sentence, two structures. The phrase &quot;with the telescope&quot; can attach to the verb (instrument) or to the noun (description). Symbols are ambiguous; context decides." style="max-width:780px" font-family="Inter,system-ui,sans-serif" font-size="13"><text x="380.0" y="18.0" text-anchor="middle" class="" font-size="14" font-weight="700">&quot;I saw the man with the telescope&quot;</text><text x="190.0" y="48.0" text-anchor="middle" class="acc" font-size="12" font-weight="700">Reading 1: I used the telescope</text><rect x="30.0" y="150.0" width="25.4" height="28.0" rx="10" class="bx"/><text x="42.7" y="168.0" text-anchor="middle" class="" font-size="12" font-weight="600">I</text><rect x="63.4" y="150.0" width="40.2" height="28.0" rx="10" class="bx"/><text x="83.5" y="168.0" text-anchor="middle" class="" font-size="12" font-weight="600">saw</text><rect x="111.6" y="150.0" width="69.8" height="28.0" rx="10" class="bx"/><text x="146.5" y="168.0" text-anchor="middle" class="" font-size="12" font-weight="600">the man</text><rect x="189.4" y="150.0" width="151.2" height="28.0" rx="10" class="bx"/><text x="265.0" y="168.0" text-anchor="middle" class="" font-size="12" font-weight="600">with the telescope</text><path d="M265.0,150 C265.0,88 83.5,88 83.5,150" class="ln1" stroke-width="2.5" fill="none"/><text x="174.2" y="92.0" text-anchor="middle" class="mut" font-size="11">attaches to &quot;saw&quot;</text><text x="570.0" y="48.0" text-anchor="middle" class="ex" font-size="12" font-weight="700">Reading 2: the man had the telescope</text><rect x="410.0" y="150.0" width="25.4" height="28.0" rx="10" class="bx"/><text x="422.7" y="168.0" text-anchor="middle" class="" font-size="12" font-weight="600">I</text><rect x="443.4" y="150.0" width="40.2" height="28.0" rx="10" class="bx"/><text x="463.5" y="168.0" text-anchor="middle" class="" font-size="12" font-weight="600">saw</text><rect x="491.6" y="150.0" width="69.8" height="28.0" rx="10" class="bx"/><text x="526.5" y="168.0" text-anchor="middle" class="" font-size="12" font-weight="600">the man</text><rect x="569.4" y="150.0" width="151.2" height="28.0" rx="10" class="bx"/><text x="645.0" y="168.0" text-anchor="middle" class="" font-size="12" font-weight="600">with the telescope</text><path d="M645.0,150 C645.0,88 526.5,88 526.5,150" class="ln3" stroke-width="2.5" fill="none"/><text x="585.8" y="92.0" text-anchor="middle" class="mut" font-size="11">attaches to &quot;man&quot;</text></svg><figcaption>One sentence, two structures. The phrase "with the telescope" can attach to the verb (instrument) or to the noun (description). Symbols are ambiguous; context decides.</figcaption></figure>
+<!--/viz:pp-attach-->
+<h2>Bonus from Lecture 2: the Pirahã language</h2>
+<p>The class discussed the documentary on <b>Pirahã</b>, a language of the Amazon. Researchers argued it lacks <b>recursion</b>, the ability to nest a clause inside another clause.</p>
+<div class="box ex"><span class="lbl">What is recursion?</span>
+<p>Main (matrix) clause with an embedded clause inside: <i>"John said <u>that Mary believed <u>that Ram knew <u>that…</u></u></u>"</i>. You can keep nesting forever. Most languages allow this. Pirahã apparently doesn't. The speakers were also described as very "grounded": they talk about what they directly experience. This shows how much culture and language shape each other.</p></div>
+<p>The professor also recommended a video on how a child acquires its first words, with a useful takeaway: <b>when you train a computer on language, think of it as a child learning.</b></p>
+
+<div class="box exam"><span class="lbl">Exam tip</span>
+<p>Documentaries won't be examined in depth, but basic factual MCQs (e.g. "which is true about Pirahã?") can appear. Be able to name the five levels of language with an example of each, and explain form–meaning pairing and projected reality.</p></div>
+
+<div class="box try"><span class="lbl">Try it</span>
+<p>Find a sentence in your mother tongue with two meanings. Which layer causes the ambiguity: a word (lexical) or the structure (structural)?</p></div>
+
+<div class="box key"><span class="lbl">Open question from class</span>
+<p><i>When can we say a machine has truly understood us?</i> Language is a behaviour, and behaviour depends on both <b>cognition</b> and <b>environment</b>. Machines don't have human cognition, so we have to model it computationally. This is still an active research question, and it's the starting point of the next topic.</p></div>
+<h2>From the lecture slides</h2>
+<div class="box key"><span class="lbl">Course framing (Introduction slides)</span>
+<p>The language part was taught in two halves: <b>Traditional Methods</b> (8 lectures, Dr. Sidharth Ranjan), focused on morphological, lexical and syntactic analysis, and <b>Modern Methods</b> (8 lectures, Dr. Deeksha Varshney), covering neural NLP.</p>
+<p>The slides ask us to move beyond "How do I manipulate this string of words?" to <b>"What kind of cognitive or representational system could produce this behaviour?"</b></p></div>
+<div class="tbl-wrap"><table>
+<tr><th>Slide idea</th><th>In simple words</th></tr>
+<tr><td>Symbols = "bits of language"</td><td>Meaningful parts of words (<i>dis-</i> in <i>distaste</i>), whole words (cat, run, tomorrow), and strings of words ("He couldn't write the entire musical piece")</td></tr>
+<tr><td>Form</td><td>Spoken, written or signed, and paired with a <b>conventional meaning</b></td></tr>
+<tr><td>Meaning</td><td>The conventional ideational or semantic content linked to a symbol, i.e. a mental <b>concept</b></td></tr>
+<tr><td>Concepts come from percepts</td><td>Shape, colour, texture, taste and smell of a pear are integrated into one mental image, which becomes the concept PEAR</td></tr>
+<tr><td>"The cat jumped over the wall"</td><td><i>Jump</i> allows many trajectory shapes, which raises the question: how much does language actually specify, and how much must the listener infer?</td></tr>
+<tr><td>Interactive function pipeline</td><td>Rich conceptualisation (thought) → linguistic representation → <b>signal</b> (transmission) → linguistic representation → decoding → <b>reconstructed thought</b></td></tr>
+</table></div>
+<h2 id="numericals">Numericals</h2>
+<p>This lecture was conceptual, so no numericals were taught. Numericals start in topic 04.</p>

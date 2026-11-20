@@ -1,0 +1,113 @@
+<div class="tldr"><h3>In 30 seconds</h3><ul>
+<li><b>Intrinsic evaluation</b> tests embeddings on small sub-tasks (similarity, analogies, clustering, verb–object fit). Fast, but not proof of real usefulness.</li>
+<li><b>Extrinsic evaluation</b> tests them inside a real downstream task (sentiment, translation, NER), with embeddings either <b>fixed</b> or <b>fine-tuned</b>. Slower, but it's what matters.</li>
+<li>No single embedding wins everywhere. Pick by experiment.</li>
+<li>Limitations of word2vec/GloVe: they ignore <b>morphology</b> (dog vs dogs), handle <b>rare/unseen words</b> badly, aren't grounded in <b>facts</b>, aren't aligned <b>across languages</b>, aren't <b>interpretable</b>, encode <b>bias</b>, and are <b>static</b>.</li>
+<li>Fixes: <b>FastText</b> (character n-grams), subword tokenizers (BPE, WordPiece), multilingual alignment, debiasing, contextual embeddings.</li>
+</ul></div>
+<h2>What each idea is for</h2>
+<div class="tbl-wrap"><table class="uses">
+<tr><th>Concept</th><th>What it's for</th><th>Where it's used</th></tr>
+<tr><td>Intrinsic evaluation</td><td>Quick checks that embeddings capture meaning</td><td>Comparing embedding methods; probing LLM layers</td></tr>
+<tr><td>Extrinsic evaluation</td><td>Shows whether embeddings help a real task</td><td>Choosing embeddings for a product</td></tr>
+<tr><td>Fixed vs fine-tuned</td><td>Trade-off between stability and task fit</td><td>Transfer learning (freeze vs fine-tune)</td></tr>
+<tr><td>FastText / character n-grams</td><td>Gives vectors to rare and unseen words, and captures morphology</td><td>Morphologically rich languages (Hindi, Telugu, Marathi), noisy text</td></tr>
+<tr><td>Subword tokenization (BPE, WordPiece)</td><td>A fixed-size vocabulary that still covers every word</td><td>GPT, BERT and other LLM tokenizers</td></tr>
+<tr><td>Multilingual alignment</td><td>Maps languages into one shared space</td><td>Cross-lingual search, low-resource translation</td></tr>
+<tr><td>Debiasing</td><td>Reduces harmful stereotypes in vectors</td><td>Fairness in hiring, search and recommendation systems</td></tr>
+<tr><td>Contextual embeddings</td><td>A different vector for each sense of a word</td><td>BERT and transformer models</td></tr>
+</table></div>
+
+
+<h2>How do we know an embedding is any good?</h2>
+<div class="two">
+<div class="card"><h4>Intrinsic</h4><p>Evaluate on a specific <b>intermediate sub-task</b>. ✔ Fast to compute, ✔ helps you understand the method. ✘ Unclear whether it helps a real task until the correlation is shown.</p></div>
+<div class="card"><h4>Extrinsic</h4><p>Evaluate on a <b>real downstream task</b>. ✔ Shows real usefulness. ✘ Can take a long time (a whole new dataset and model to train).</p></div>
+</div>
+
+<h2>Intrinsic evaluation: four tests</h2>
+<div class="tbl-wrap"><table>
+<tr><th>Test</th><th>What it checks</th><th>Example</th></tr>
+<tr><td><b>Relatedness / similarity</b></td><td>Does cosine similarity agree with human similarity scores? (correlation)</td><td>Humans rate car–automobile ≈ 0.95, and cosine should be high too</td></tr>
+<tr><td><b>Analogy</b></td><td>Does vector arithmetic find the missing word?</td><td>man : king :: woman : ? → <i>queen</i> (Google analogy set, BATS)</td></tr>
+<tr><td><b>Categorisation</b></td><td>Do same-category words cluster? (purity / F-score)</td><td>{dog, cat, horse} vs {apple, orange, banana}</td></tr>
+<tr><td><b>Selectional preference</b></td><td>Do typical verb–noun pairs score higher?</td><td>"eat an apple" ≫ "eat a rock"</td></tr>
+</table></div>
+<div class="box an"><span class="lbl">Still used today: probing LLM layers</span>
+<p>Big models have dozens of layers, and we don't really know what each one does. Researchers pull out the representations from each layer and test them on small tasks like these (e.g. POS tagging). If layer 2's representations do badly at POS tagging, layer 2 probably isn't encoding POS. This was an early form of <b>interpretability</b>; today there are fancier tools like sparse autoencoders and circuit tracing.</p></div>
+
+<!--viz:analogy-->
+<figure class="diagram viz" id="fig-analogy"><svg class="vz" viewBox="0 0 700 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Word analogies as parallelograms: the same offset vector (here &quot;gender&quot;) appears for many word pairs. Intrinsic test: solve a : b :: c : ? with vector arithmetic." style="max-width:700px" font-family="Inter,system-ui,sans-serif" font-size="13"><line x1="80.0" y1="200.0" x2="80.0" y2="80.0" class="arb" stroke-width="2.5"/><polygon points="80.0,80.0 83.1,87.4 76.9,87.4" class="arbf"/><text x="88.0" y="144.0" text-anchor="start" class="mut" font-size="11">gender</text><line x1="360.0" y1="210.0" x2="360.0" y2="90.0" class="arb" stroke-width="2.5"/><polygon points="360.0,90.0 363.1,97.4 356.9,97.4" class="arbf"/><text x="368.0" y="154.0" text-anchor="start" class="mut" font-size="11">gender</text><line x1="80.0" y1="200.0" x2="360.0" y2="210.0" class="ar" stroke-width="1.5" stroke-dasharray="5 4"/><polygon points="360.0,210.0 352.5,212.9 352.7,206.6" class="arf"/><text x="220.0" y="198.0" text-anchor="middle" class="mut" font-size="11">royalty</text><line x1="80.0" y1="80.0" x2="360.0" y2="90.0" class="ar" stroke-width="1.5" stroke-dasharray="5 4"/><polygon points="360.0,90.0 352.5,92.9 352.7,86.6" class="arf"/><circle cx="80.0" cy="200.0" r="6" class="c1"/><text x="68.0" y="205.0" text-anchor="end" class="" font-size="14" font-weight="700">man</text><circle cx="80.0" cy="80.0" r="6" class="c1"/><text x="68.0" y="85.0" text-anchor="end" class="" font-size="14" font-weight="700">woman</text><circle cx="360.0" cy="210.0" r="6" class="c1"/><text x="372.0" y="215.0" text-anchor="start" class="" font-size="14" font-weight="700">king</text><circle cx="360.0" cy="90.0" r="6" class="c1"/><text x="372.0" y="95.0" text-anchor="start" class="" font-size="14" font-weight="700">queen</text><text x="560.0" y="110.0" text-anchor="middle" class="" font-size="14" font-weight="700">king − man + woman</text><text x="560.0" y="134.0" text-anchor="middle" class="ex" font-size="16" font-weight="700">≈ queen</text><text x="560.0" y="160.0" text-anchor="middle" class="mut" font-size="11">find the nearest word by cosine</text></svg><figcaption>Word analogies as parallelograms: the same offset vector (here "gender") appears for many word pairs. Intrinsic test: solve a : b :: c : ? with vector arithmetic.</figcaption></figure>
+<!--/viz:analogy-->
+<!--viz:spearman-->
+<figure class="diagram viz" id="fig-spearman"><svg class="vz" viewBox="0 0 700 290" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="How the Word Embeddings assignment scores a model: cosine similarity for each word pair vs the human rating, then Spearman&#x27;s rank correlation per language, averaged over languages (macro average). Eight made-up pairs shown." style="max-width:700px" font-family="Inter,system-ui,sans-serif" font-size="13"><line x1="70.0" y1="245.0" x2="450.0" y2="245.0" class="grid" stroke-width="1"/><text x="64.0" y="249.0" text-anchor="end" class="mut" font-size="11">0</text><line x1="70.0" y1="190.0" x2="450.0" y2="190.0" class="grid" stroke-width="1"/><text x="64.0" y="194.0" text-anchor="end" class="mut" font-size="11">0.25</text><line x1="70.0" y1="135.0" x2="450.0" y2="135.0" class="grid" stroke-width="1"/><text x="64.0" y="139.0" text-anchor="end" class="mut" font-size="11">0.5</text><line x1="70.0" y1="80.0" x2="450.0" y2="80.0" class="grid" stroke-width="1"/><text x="64.0" y="84.0" text-anchor="end" class="mut" font-size="11">0.75</text><line x1="70.0" y1="25.0" x2="450.0" y2="25.0" class="grid" stroke-width="1"/><text x="64.0" y="29.0" text-anchor="end" class="mut" font-size="11">1</text><line x1="70.0" y1="245.0" x2="70.0" y2="249.0" class="ax" stroke-width="1"/><text x="70.0" y="262.0" text-anchor="middle" class="mut" font-size="11">0</text><line x1="146.0" y1="245.0" x2="146.0" y2="249.0" class="ax" stroke-width="1"/><text x="146.0" y="262.0" text-anchor="middle" class="mut" font-size="11">2</text><line x1="222.0" y1="245.0" x2="222.0" y2="249.0" class="ax" stroke-width="1"/><text x="222.0" y="262.0" text-anchor="middle" class="mut" font-size="11">4</text><line x1="298.0" y1="245.0" x2="298.0" y2="249.0" class="ax" stroke-width="1"/><text x="298.0" y="262.0" text-anchor="middle" class="mut" font-size="11">6</text><line x1="374.0" y1="245.0" x2="374.0" y2="249.0" class="ax" stroke-width="1"/><text x="374.0" y="262.0" text-anchor="middle" class="mut" font-size="11">8</text><line x1="450.0" y1="245.0" x2="450.0" y2="249.0" class="ax" stroke-width="1"/><text x="450.0" y="262.0" text-anchor="middle" class="mut" font-size="11">10</text><line x1="70.0" y1="245.0" x2="450.0" y2="245.0" class="ax" stroke-width="1.2"/><line x1="70.0" y1="25.0" x2="70.0" y2="245.0" class="ax" stroke-width="1.2"/><text x="260.0" y="281.0" text-anchor="middle" class="mut" font-size="12">human similarity score (0–10)</text><text x="28.0" y="135.0" text-anchor="middle" class="mut" font-size="12" transform="rotate(-90 28 135.0)">model cosine similarity</text><circle cx="419.6" cy="66.8" r="6" class="c1"/><circle cx="393.0" cy="82.2" r="6" class="c1"/><circle cx="370.2" cy="71.2" r="6" class="c1"/><circle cx="301.8" cy="130.6" r="6" class="c1"/><circle cx="260.0" cy="157.0" r="6" class="c1"/><circle cx="191.6" cy="168.0" r="6" class="c1"/><circle cx="149.8" cy="218.6" r="6" class="c1"/><circle cx="108.0" cy="205.4" r="6" class="c1"/><text x="560.0" y="70.0" text-anchor="middle" class="" font-size="12" font-weight="700">Spearman ρ = 1 − 6Σd² / (n(n²−1))</text><text x="560.0" y="95.0" text-anchor="middle" class="mut" font-size="11">ranks differ by d: Σd² = 4, n = 8</text><text x="560.0" y="122.0" text-anchor="middle" class="ex" font-size="13" font-weight="700">ρ = 1 − 6·4/(8·63) = 0.952</text><text x="560.0" y="150.0" text-anchor="middle" class="mut" font-size="11">compares ORDER, not raw values</text></svg><figcaption>How the Word Embeddings assignment scores a model: cosine similarity for each word pair vs the human rating, then Spearman's rank correlation per language, averaged over languages (macro average). Eight made-up pairs shown.</figcaption></figure>
+<!--/viz:spearman-->
+<h2>Extrinsic evaluation: plug into a real task</h2>
+<p>Downstream tasks: question answering, sentiment analysis, NER, machine translation. These are well-defined problems you could ship to users. You measure with the <b>task's</b> metrics (F1 for classification, BLEU for translation), not with similarity scores.</p>
+<div class="tbl-wrap"><table>
+<tr><th>Strategy</th><th>What happens</th><th>Pros</th><th>Cons</th></tr>
+<tr><td><b>Fixed (frozen, pre-trained)</b></td><td>Embeddings are not updated while training the task</td><td>Fewer parameters, less overfitting</td><td>Can't adapt to task-specific meanings</td></tr>
+<tr><td><b>Fine-tuned</b></td><td>Embeddings are updated along with the task (the objective is the task, e.g. translation)</td><td>Task-adaptive</td><td>Risk of <b>forgetting</b> general knowledge</td></tr>
+<tr><td><b>Combined</b></td><td>Concatenate pre-trained and learned embeddings</td><td>General + task-specific information</td><td>Bigger model, more computation</td></tr>
+</table></div>
+<div class="box key"><span class="lbl">Which embedding should I use?</span><p>A comparison paper tested many embeddings (SGNS, GloVe, PPMI, SVD…) on relatedness, categorisation and analogy, and the winner changed from task to task. <b>No one size fits all.</b> Try them and keep what scores best.</p></div>
+
+<h2>What's wrong with word2vec and GloVe?</h2>
+<h3>1. Blind to word structure (morphology)</h3>
+<p><i>dog</i> and <i>dogs</i>, <i>walk</i> and <i>walking</i> can get unrelated vectors, because these models work at the <b>whole-word</b> level and ignore suffixes like -s and -ing. Rare words get poor vectors, and unseen (out-of-vocabulary) words get none at all.</p>
+<div class="box ex"><span class="lbl">Fix: FastText (Facebook AI Research)</span>
+<p>Represent a word as the <b>sum/average of its character n-gram vectors</b>. With trigrams and boundary markers:</p>
+<div class="formula">playing → &lt;pl, pla, lay, ayi, yin, ing, ng&gt;</div>
+<p>Now <i>playing</i>, <i>played</i> and <i>player</i> share pieces like "pla" and "lay". And an unseen word such as "unknown" can still get a vector built from known pieces like "kno" and "own". Character vectors can also be fed through an LSTM to build a word vector.</p></div>
+<p><b>Subword embeddings</b> follow the same idea: modern tokenizers like <b>Byte-Pair Encoding (BPE)</b> and <b>WordPiece</b> split words into frequent pieces. Morpheme-based versions split <i>unfortunately → un + fortunate + ly</i>, so <i>unfortunate</i> and <i>fortunately</i> share the root <i>fortunate</i>.</p>
+
+<h3>2. Not grounded in knowledge</h3>
+<p>Embeddings capture <b>statistical</b> patterns, not facts. <i>Whale</i> ends up close to <i>fish</i> because both appear near <i>ocean</i>, but a whale is not a fish. A model can wrongly treat similarity as fact.</p>
+
+<h3>3. Not aligned across languages</h3>
+<p>English <i>dog</i> and Spanish <i>perro</i> are trained in separate spaces, so they don't line up. <b>Multilingual alignment</b> methods learn a transformation (e.g. a rotation matrix) that maps one language's space onto another's so that <i>cat</i> lands near <i>猫 (māo)</i>. Some methods need no bilingual dictionary at all. The broader lesson: linear algebra matters, and research increasingly works in these <b>latent spaces</b>.</p>
+
+<h3>4. Not interpretable</h3>
+<p>In a 300-dimensional vector, what does dimension 17 = 2.1 mean? Nobody knows.</p>
+
+<h3>5. They encode bias</h3>
+<div class="box ex"><span class="lbl">Example</span><p>Analogy tests produced <b>man : computer programmer :: woman : homemaker</b>. The vectors learned this from human-written text. <b>Mitigations:</b> post-processing / debiasing, and training on balanced or filtered corpora (often curated by hand). No large model today is fully unbiased. As the instructor put it, models can't be unbiased while the humans writing the data aren't.</p></div>
+
+<h3>6. Static: one vector per word</h3>
+<p>"bank" gets the same vector in "river bank" and "bank loan". <b>Contextual embeddings</b> (e.g. BERT, built on transformers) give a different vector for each usage.</p>
+
+<div class="box exam"><span class="lbl">Exam tip</span>
+<p>Define intrinsic vs extrinsic with examples, the pros and cons of fixed vs fine-tuned embeddings, and how FastText handles out-of-vocabulary words with character n-grams (be able to list a word's trigrams).</p></div>
+<div class="box try"><span class="lbl">Try it</span>
+<p>Write out the character trigrams (with &lt; &gt;) for "walking" and "walked". Which do they share? (&lt;wa, wal, alk)</p></div>
+<h2>From the lecture slides</h2>
+<ul>
+<li><b>Intrinsic relatedness metric:</b> Spearman or Pearson correlation between cosine similarity and human scores (WordSim-353, SimLex-999). E.g. human car–automobile = 0.95 vs embedding cosine ≈ 0.92 means high correlation, a good model. Analogy datasets: Google Analogy Test Set, BATS. Categorisation: k-means clusters scored by purity or F-score.</li>
+<li><b>Extrinsic caveat:</b> it's unclear whether the subsystem or its interaction with other parts is the problem. "If replacing exactly one subsystem with another improves accuracy, winning!" Initialising with pre-trained embeddings gives faster convergence and better generalisation with little data.</li>
+<li><b>Character-based embeddings:</b> "cats" → c a t s, each character vector fed through a <b>BiLSTM or CNN</b> to compose a word vector. Unseen words like "catsy" still get vectors.</li>
+<li><b>Character n-grams of length 3–6</b> for &lt;where&gt; (plus the whole word): n = 3: &lt;wh, whe, her, ere, re&gt; · n = 4: &lt;whe, wher, here, ere&gt; · n = 5: &lt;wher, where, here&gt; · n = 6: &lt;where, where&gt;.</li>
+<li><b>FastText</b> (Facebook AI Research, 2016): v<sub>word</sub> = Σ<sub>g∈ngrams(word)</sub> z<sub>g</sub>. Training is still skip-gram/CBOW, but the updates go to all the sub-word vectors (input: n-grams of "playing", output: context words like "football", "he").</li>
+<li><b>Unsupervised cross-lingual alignment:</b> <i>Artetxe et al. 2017</i> use identical strings (numbers, names, "COVID", "2025", "UN") as anchors, learn a linear map W from X to Y, and refine with mutual nearest neighbours. <i>Zhang et al. 2017</i> use adversarial training: a generator learns W while a discriminator guesses the language, until the two spaces are indistinguishable. Supervised alignment: <i>Faruqui et al. 2014</i>.</li>
+<li><b>Sparse embeddings</b> for interpretability: add an L1 penalty (λ controls sparsity) so most dimensions are zero and each active one tends to mean something ("is animal", "is location").</li>
+<li><b>De-biasing (Bolukbasi et al. 2016):</b> (1) pick bias-defining pairs (he/she…), (2) compute the bias direction, (3) neutralise words that should be neutral. Perfect debiasing remains hard.</li>
+</ul>
+<h2 id="numericals">Numericals</h2>
+<p>This lecture had no numericals. These small practice questions cover its mechanics.</p>
+<h3 class="numh"><span class="tag-class">From class</span> The Word Embeddings assignment: how it is scored</h3>
+<div class="box ex"><span class="lbl">C-asg. Cosine → Spearman → macro average</span>
+<p>The assignment trains 300-dimensional embeddings from scratch on IndicCorpV2 and must handle out-of-vocabulary words (e.g. with subwords, the FastText idea). Scoring per language ℓ:</p>
+<ol class="steps">
+<li>For every word pair, s<sub>model</sub> = cos(v<sub>i</sub>, v<sub>j</sub>) = v<sub>i</sub>·v<sub>j</sub> / (‖v<sub>i</sub>‖‖v<sub>j</sub>‖).</li>
+<li>ρ<sub>ℓ</sub> = Spearman(s<sub>model</sub>, s<sub>human</sub>): rank both lists and correlate the ranks. With no ties, ρ = 1 − 6Σd² / (n(n² − 1)).</li>
+<li>Final score: S<sub>macro</sub> = (1/|L|) Σ ρ<sub>ℓ</sub>, a plain average over languages, so small languages count as much as big ones.</li>
+</ol>
+<p>Example (chart above): 8 pairs, Σd² = 4 → ρ = 1 − 24/504 = <b>0.952</b>. If three languages score 0.95, 0.40 and 0.55, S<sub>macro</sub> = 1.90 / 3 = <b>0.633</b>.</p></div>
+<h3 class="numh"><span class="tag-prac">Practice</span></h3>
+<details class="sol"><summary class="q">P1. List the character trigrams (with &lt; &gt;) of "dogs" and "dog". How many do they share?</summary>
+<p>dog: &lt;do, dog, og&gt; · dogs: &lt;do, dog, ogs, gs&gt;. They share <b>2</b> (&lt;do, dog), so their vectors end up similar.</p></details>
+<details class="sol"><summary class="q">P2. With boundary markers, how many trigrams does a word of length L have? Check with "playing".</summary>
+<p>The padded length is L + 2, so there are L + 2 − 3 + 1 = <b>L</b> trigrams. "playing" (7 letters) has 7: &lt;pl, pla, lay, ayi, yin, ing, ng&gt;.</p></details>
+<details class="sol"><summary class="q">P3. Human similarity scores for 3 word pairs: 9, 5, 1. Model cosines: 0.8, 0.6, 0.1. Is this good intrinsically?</summary>
+<p>Yes. The ranking is identical (pair 1 > pair 2 > pair 3), so the rank correlation is perfect (Spearman = 1).</p></details>
+<details class="sol"><summary class="q">P4 (slide-style). List all 4-grams of &lt;where&gt;, and the total number of 3–6-grams (excluding the whole word).</summary>
+<p>4-grams: &lt;whe, wher, here, ere&gt; (4). Counts: n=3: 5, n=4: 4, n=5: 3, n=6: 2, so <b>14</b> n-grams (+ the word "&lt;where&gt;" itself).</p></details>

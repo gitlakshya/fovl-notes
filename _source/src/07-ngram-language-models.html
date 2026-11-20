@@ -1,0 +1,240 @@
+<div class="tldr"><h3>In 30 seconds</h3><ul>
+<li>A <b>language model (LM)</b> is just a <b>probability distribution over word sequences</b>. It estimates how likely a sentence (or next word) is.</li>
+<li>We can't know the <i>true</i> probabilities, so we <b>estimate</b> them from a big corpus by <b>counting</b>.</li>
+<li><b>Markov assumption:</b> the next word depends only on the last few words. That gives <b>unigram / bigram / trigram</b> models.</li>
+<li>Bigram estimate: P(w | prev) = count(prev w) / count(prev).</li>
+<li><b>Perplexity</b> = 2<sup>entropy rate</sup> = P(sentence)<sup>−1/N</sup>: the effective number of choices per word. <b>Lower is better.</b></li>
+<li>Unseen sequences get probability 0, so we <b>smooth</b> (add-one/Laplace, &lt;UNK&gt;) and <b>interpolate / back off</b>.</li>
+</ul></div>
+<h2>What each idea is for</h2>
+<div class="tbl-wrap"><table class="uses">
+<tr><th>Concept</th><th>What it's for</th><th>Where it's used</th></tr>
+<tr><td>Language model</td><td>Gives a probability to any word sequence, so we can pick the most natural one</td><td>Speech recognition, spell correction, translation, autocomplete, LLMs</td></tr>
+<tr><td>Markov assumption / n-grams</td><td>Makes probability estimation feasible by limiting the context</td><td>Keyboard prediction, fast baselines, KenLM in speech systems</td></tr>
+<tr><td>MLE (count ratios)</td><td>Estimates probabilities directly from a corpus</td><td>Every count-based model</td></tr>
+<tr><td>Log probability</td><td>Avoids numeric underflow; turns products into sums</td><td>All LM toolkits and neural losses</td></tr>
+<tr><td>Perplexity</td><td>A single-number measure of LM quality (lower is better)</td><td>Comparing LMs on the same vocabulary and test set</td></tr>
+<tr><td>&lt;UNK&gt;</td><td>Handles out-of-vocabulary words</td><td>Every closed-vocabulary model</td></tr>
+<tr><td>Add-one smoothing</td><td>Stops unseen events from getting zero probability</td><td>Simple baselines, Naive Bayes text classifiers</td></tr>
+<tr><td>Interpolation / back-off</td><td>Combines evidence from different n-gram orders</td><td>Production n-gram LMs (Kneser–Ney)</td></tr>
+<tr><td>Intrinsic vs extrinsic evaluation</td><td>Perplexity vs real-task performance</td><td>Model selection</td></tr>
+<tr><td>SRILM</td><td>A toolkit that trains and queries n-gram LMs at scale</td><td>Speech and MT research</td></tr>
+</table></div>
+
+
+<h2>Why should a computer predict words?</h2>
+<p>Because <b>humans do it constantly</b>. When someone mumbles "I'll be back soon-ish", you hear it correctly instead of "I'll be bassoon-ish", because the first is far more <b>probable</b>. Speech recognition, spelling correction, translation and chatbots all need to know which word sequences are likely.</p>
+<div class="box ex"><span class="lbl">Example: grammar can't decide, probability can</span>
+<p>S1: <i>John went to London in the late afternoon.</i><br>S2: <i>John went in the late afternoon to London.</i><br>Both are grammatical, yet almost the whole class preferred S1. Grammar can't explain that preference, but probability can. A good LM should give S1 the higher probability. <b>Human preference ∝ probability.</b></p></div>
+
+<h2>From conditional entropy to language models</h2>
+<p>In topic 06, H(Y|X) averaged over <i>all</i> values of X. For language we usually care about <b>one specific context</b>, e.g. the uncertainty of the next word after "peanut butter and ___". That's <b>pointwise conditional entropy</b> (one value of X, not the average).</p>
+<div class="formula">surprisal of a word = − log₂ M(w | history)<small>M = our language model (estimated probability distribution)</small></div>
+<p>Where do the probabilities come from? Not by peering into someone's head. We take a large <b>corpus</b> assumed to represent the language, count how often things occur, and treat those counts as estimates of the <b>true probability</b>.</p>
+<div class="box key"><span class="lbl">Key idea</span><p><b>Training a language model = estimating probabilities from a corpus</b>, assuming the corpus is a good enough sample of the language.</p></div>
+
+<h3>From one word to the whole sentence</h3>
+<p>Apply the chain rule to the sequence w₁ … w<sub>N</sub>:</p>
+<div class="formula">total surprisal = − log₂ M(w₁…w<sub>N</sub>) = Σ<sub>i</sub> − log₂ M(w<sub>i</sub> | w₁…w<sub>i−1</sub>)</div>
+<div class="formula">entropy rate (average surprise per word) = H = (1/N) · [ − log₂ M(w₁…w<sub>N</sub>) ]</div>
+
+<h2>Perplexity</h2>
+<div class="formula">PP = 2<sup>H</sup> = M(w₁ … w<sub>N</sub>)<sup>−1/N</sup><small>(take log₂ of both sides to see they're the same)</small></div>
+<div class="box an"><span class="lbl">Analogy: a multiple-choice exam</span>
+<p>Perplexity 4 means the model is, on average, as confused as if it had to choose among <b>4 equally likely words</b> at each step. Perplexity 1 means it knows exactly what's next. A perplexed student is a confused student, so <b>lower perplexity = better model</b> (more confident, closer to the true probabilities).</p></div>
+<p>Entropy and perplexity move together. Entropy is "minimum bits / expected surprise". Perplexity expresses the same thing as an "effective number of choices per word".</p>
+
+<h2>N-gram models and the Markov assumption</h2>
+<p>Conditioning on the <i>entire</i> history is impossible (we'd almost never see the same long history twice). <b>Markov assumption:</b> the probability of a word depends only on a fixed number of recent words.</p>
+<div class="tbl-wrap"><table>
+<tr><th>Model</th><th>Context used</th><th>P(sentence) for "He put the coffee on the table"</th></tr>
+<tr><td>Unigram (n=1)</td><td>none</td><td>P(He)·P(put)·P(the)·P(coffee)·…</td></tr>
+<tr><td>Bigram (n=2)</td><td>1 previous word</td><td>P(He|&lt;s&gt;)·P(put|He)·P(the|put)·P(coffee|the)·…</td></tr>
+<tr><td>Trigram (n=3)</td><td>2 previous words</td><td>…·P(the|He put)·P(coffee|put the)·…</td></tr>
+</table></div>
+<p>&lt;s&gt; and &lt;/s&gt; mark the start and end of a sentence. Why learn n-grams when we have transformers? Because RNNs, LSTMs and transformers all build on these ideas, and once n-grams are clear the rest is much easier.</p>
+
+<h3>Estimating probabilities by counting (maximum likelihood)</h3>
+<div class="formula">P(w<sub>n</sub> | w<sub>n−1</sub>) = C(w<sub>n−1</sub> w<sub>n</sub>) / C(w<sub>n−1</sub>) &nbsp;&nbsp;&nbsp; P(w<sub>n</sub> | w<sub>n−2</sub> w<sub>n−1</sub>) = C(w<sub>n−2</sub> w<sub>n−1</sub> w<sub>n</sub>) / C(w<sub>n−2</sub> w<sub>n−1</sub>)</div>
+<p>This comes from P(x|y) = P(y,x)/P(y). The total-count denominators cancel and we're left with a ratio of counts. With a big corpus you could literally count with <code>grep -c "put the coffee"</code>.</p>
+
+<div class="box ex"><span class="lbl">Extra worked example: a full bigram model by hand (the class corpus is in the Numericals section below)</span>
+<p><b>Training corpus</b> (4 sentences):</p>
+<pre><code>&lt;s&gt; I like tea &lt;/s&gt;
+&lt;s&gt; I like coffee &lt;/s&gt;
+&lt;s&gt; you like tea &lt;/s&gt;
+&lt;s&gt; I drink tea &lt;/s&gt;</code></pre>
+<p><b>Useful counts:</b> C(&lt;s&gt;)=4, C(I)=3, C(like)=3, C(tea)=3 · C(&lt;s&gt; I)=3, C(I like)=2, C(like tea)=2, C(tea &lt;/s&gt;)=3.</p>
+<p><b>Test sentence:</b> "I like tea"</p>
+<div class="tbl-wrap"><table>
+<tr><th>Factor</th><th>Count ratio</th><th>Value</th></tr>
+<tr><td>P(I | &lt;s&gt;)</td><td>3 / 4</td><td>0.75</td></tr>
+<tr><td>P(like | I)</td><td>2 / 3</td><td>0.667</td></tr>
+<tr><td>P(tea | like)</td><td>2 / 3</td><td>0.667</td></tr>
+<tr><td>P(&lt;/s&gt; | tea)</td><td>3 / 3</td><td>1.0</td></tr>
+<tr><th>P(sentence)</th><th colspan="2">0.75 × 0.667 × 0.667 × 1 = <b>0.333</b></th></tr>
+</table></div>
+<p><b>Perplexity.</b> What is N? Count the words, and decide about the end marker:</p>
+<ul>
+<li><b>PPL</b> (count &lt;/s&gt; as a token, N = 3 + 1 = 4): 0.333<sup>−1/4</sup> ≈ <b>1.32</b></li>
+<li><b>PPL1</b> (words only, N = 3): 0.333<sup>−1/3</sup> ≈ <b>1.44</b></li>
+</ul>
+<p>Count only <b>one</b> boundary tag (&lt;/s&gt;), never both. If you know where one sentence ends, you already know where the next begins, so counting &lt;s&gt; too would be redundant. Toolkits like SRILM report both PPL and PPL1.</p>
+<p><b>Unigram version</b> (16 tokens incl. 4 &lt;/s&gt;): P = (3/16)(3/16)(3/16)(4/16) ≈ 0.0016, far lower than the bigram's 0.333, because unigrams ignore context.</p></div>
+
+<div class="box key"><span class="lbl">Why log probabilities?</span>
+<p>Multiply thousands of small probabilities and you get numbers like 0.0000000…3 that <b>underflow</b> (floating-point error). Logs turn products into sums: log(a·b) = log a + log b. Toolkits therefore report <b>logprob</b>. (SRILM uses log base 10: log₁₀ 0.333 = −0.477.)</p></div>
+
+<!--viz:bigram-heat-->
+<figure class="diagram viz" id="fig-bigram-heat"><svg class="vz" viewBox="0 0 520 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The bigram table of the in-class corpus (each row sums to 1). Reading &quot;Sam I am&quot; is a walk through the darkest cells: P(Sam|&amp;lt;s&amp;gt;) 0.6 × P(I|Sam) 0.6 × P(am|I) 0.4 × P(&amp;lt;/s&amp;gt;|am) 0.5 = 0.072." style="max-width:520px" font-family="Inter,system-ui,sans-serif" font-size="13"><text x="115.0" y="32.0" text-anchor="middle" class="mut" font-size="11">I</text><text x="185.0" y="32.0" text-anchor="middle" class="mut" font-size="11">am</text><text x="255.0" y="32.0" text-anchor="middle" class="mut" font-size="11">Sam</text><text x="325.0" y="32.0" text-anchor="middle" class="mut" font-size="11">do</text><text x="395.0" y="32.0" text-anchor="middle" class="mut" font-size="11">like</text><text x="465.0" y="32.0" text-anchor="middle" class="mut" font-size="11">&lt;/s&gt;</text><text x="72.0" y="60.0" text-anchor="end" class="mut" font-size="11">&lt;s&gt;</text><rect x="81.0" y="41.0" width="68.0" height="30.0" rx="4" class="hm" fill-opacity="0.25"/><text x="115.0" y="60.0" text-anchor="middle" class="" font-size="11">0.2</text><rect x="151.0" y="41.0" width="68.0" height="30.0" rx="4" class="hm" fill-opacity="0.08"/><text x="185.0" y="60.0" text-anchor="middle" class="" font-size="11">0</text><rect x="221.0" y="41.0" width="68.0" height="30.0" rx="4" class="hm" fill-opacity="0.59"/><text x="255.0" y="60.0" text-anchor="middle" class="hmt" font-size="11">0.6</text><rect x="291.0" y="41.0" width="68.0" height="30.0" rx="4" class="hm" fill-opacity="0.25"/><text x="325.0" y="60.0" text-anchor="middle" class="" font-size="11">0.2</text><rect x="361.0" y="41.0" width="68.0" height="30.0" rx="4" class="hm" fill-opacity="0.08"/><text x="395.0" y="60.0" text-anchor="middle" class="" font-size="11">0</text><rect x="431.0" y="41.0" width="68.0" height="30.0" rx="4" class="hm" fill-opacity="0.08"/><text x="465.0" y="60.0" text-anchor="middle" class="" font-size="11">0</text><text x="72.0" y="92.0" text-anchor="end" class="mut" font-size="11">I</text><rect x="81.0" y="73.0" width="68.0" height="30.0" rx="4" class="hm" fill-opacity="0.08"/><text x="115.0" y="92.0" text-anchor="middle" class="" font-size="11">0</text><rect x="151.0" y="73.0" width="68.0" height="30.0" rx="4" class="hm" fill-opacity="0.42"/><text x="185.0" y="92.0" text-anchor="middle" class="" font-size="11">0.4</text><rect x="221.0" y="73.0" width="68.0" height="30.0" rx="4" class="hm" fill-opacity="0.08"/><text x="255.0" y="92.0" text-anchor="middle" class="" font-size="11">0</text><rect x="291.0" y="73.0" width="68.0" height="30.0" rx="4" class="hm" fill-opacity="0.25"/><text x="325.0" y="92.0" text-anchor="middle" class="" font-size="11">0.2</text><rect x="361.0" y="73.0" width="68.0" height="30.0" rx="4" class="hm" fill-opacity="0.42"/><text x="395.0" y="92.0" text-anchor="middle" class="" font-size="11">0.4</text><rect x="431.0" y="73.0" width="68.0" height="30.0" rx="4" class="hm" fill-opacity="0.08"/><text x="465.0" y="92.0" text-anchor="middle" class="" font-size="11">0</text><text x="72.0" y="124.0" text-anchor="end" class="mut" font-size="11">am</text><rect x="81.0" y="105.0" width="68.0" height="30.0" rx="4" class="hm" fill-opacity="0.08"/><text x="115.0" y="124.0" text-anchor="middle" class="" font-size="11">0</text><rect x="151.0" y="105.0" width="68.0" height="30.0" rx="4" class="hm" fill-opacity="0.08"/><text x="185.0" y="124.0" text-anchor="middle" class="" font-size="11">0</text><rect x="221.0" y="105.0" width="68.0" height="30.0" rx="4" class="hm" fill-opacity="0.51"/><text x="255.0" y="124.0" text-anchor="middle" class="" font-size="11">0.5</text><rect x="291.0" y="105.0" width="68.0" height="30.0" rx="4" class="hm" fill-opacity="0.08"/><text x="325.0" y="124.0" text-anchor="middle" class="" font-size="11">0</text><rect x="361.0" y="105.0" width="68.0" height="30.0" rx="4" class="hm" fill-opacity="0.08"/><text x="395.0" y="124.0" text-anchor="middle" class="" font-size="11">0</text><rect x="431.0" y="105.0" width="68.0" height="30.0" rx="4" class="hm" fill-opacity="0.51"/><text x="465.0" y="124.0" text-anchor="middle" class="" font-size="11">0.5</text><text x="72.0" y="156.0" text-anchor="end" class="mut" font-size="11">Sam</text><rect x="81.0" y="137.0" width="68.0" height="30.0" rx="4" class="hm" fill-opacity="0.59"/><text x="115.0" y="156.0" text-anchor="middle" class="hmt" font-size="11">0.6</text><rect x="151.0" y="137.0" width="68.0" height="30.0" rx="4" class="hm" fill-opacity="0.08"/><text x="185.0" y="156.0" text-anchor="middle" class="" font-size="11">0</text><rect x="221.0" y="137.0" width="68.0" height="30.0" rx="4" class="hm" fill-opacity="0.08"/><text x="255.0" y="156.0" text-anchor="middle" class="" font-size="11">0</text><rect x="291.0" y="137.0" width="68.0" height="30.0" rx="4" class="hm" fill-opacity="0.08"/><text x="325.0" y="156.0" text-anchor="middle" class="" font-size="11">0</text><rect x="361.0" y="137.0" width="68.0" height="30.0" rx="4" class="hm" fill-opacity="0.08"/><text x="395.0" y="156.0" text-anchor="middle" class="" font-size="11">0</text><rect x="431.0" y="137.0" width="68.0" height="30.0" rx="4" class="hm" fill-opacity="0.42"/><text x="465.0" y="156.0" text-anchor="middle" class="" font-size="11">0.4</text><text x="72.0" y="188.0" text-anchor="end" class="mut" font-size="11">do</text><rect x="81.0" y="169.0" width="68.0" height="30.0" rx="4" class="hm" fill-opacity="0.51"/><text x="115.0" y="188.0" text-anchor="middle" class="" font-size="11">0.5</text><rect x="151.0" y="169.0" width="68.0" height="30.0" rx="4" class="hm" fill-opacity="0.08"/><text x="185.0" y="188.0" text-anchor="middle" class="" font-size="11">0</text><rect x="221.0" y="169.0" width="68.0" height="30.0" rx="4" class="hm" fill-opacity="0.08"/><text x="255.0" y="188.0" text-anchor="middle" class="" font-size="11">0</text><rect x="291.0" y="169.0" width="68.0" height="30.0" rx="4" class="hm" fill-opacity="0.08"/><text x="325.0" y="188.0" text-anchor="middle" class="" font-size="11">0</text><rect x="361.0" y="169.0" width="68.0" height="30.0" rx="4" class="hm" fill-opacity="0.51"/><text x="395.0" y="188.0" text-anchor="middle" class="" font-size="11">0.5</text><rect x="431.0" y="169.0" width="68.0" height="30.0" rx="4" class="hm" fill-opacity="0.08"/><text x="465.0" y="188.0" text-anchor="middle" class="" font-size="11">0</text><text x="72.0" y="220.0" text-anchor="end" class="mut" font-size="11">like</text><rect x="81.0" y="201.0" width="68.0" height="30.0" rx="4" class="hm" fill-opacity="0.08"/><text x="115.0" y="220.0" text-anchor="middle" class="" font-size="11">0</text><rect x="151.0" y="201.0" width="68.0" height="30.0" rx="4" class="hm" fill-opacity="0.08"/><text x="185.0" y="220.0" text-anchor="middle" class="" font-size="11">0</text><rect x="221.0" y="201.0" width="68.0" height="30.0" rx="4" class="hm" fill-opacity="0.36"/><text x="255.0" y="220.0" text-anchor="middle" class="" font-size="11">0.33</text><rect x="291.0" y="201.0" width="68.0" height="30.0" rx="4" class="hm" fill-opacity="0.08"/><text x="325.0" y="220.0" text-anchor="middle" class="" font-size="11">0</text><rect x="361.0" y="201.0" width="68.0" height="30.0" rx="4" class="hm" fill-opacity="0.08"/><text x="395.0" y="220.0" text-anchor="middle" class="" font-size="11">0</text><rect x="431.0" y="201.0" width="68.0" height="30.0" rx="4" class="hm" fill-opacity="0.65"/><text x="465.0" y="220.0" text-anchor="middle" class="hmt" font-size="11">0.67</text><text x="260.0" y="16.0" text-anchor="middle" class="" font-size="12" font-weight="700">P(next word | previous word) from the class corpus</text><text x="22.0" y="30.0" text-anchor="start" class="mut" font-size="10">prev ↓  next →</text></svg><figcaption>The bigram table of the in-class corpus (each row sums to 1). Reading "Sam I am" is a walk through the darkest cells: P(Sam|&lt;s&gt;) 0.6 × P(I|Sam) 0.6 × P(am|I) 0.4 × P(&lt;/s&gt;|am) 0.5 = 0.072.</figcaption></figure>
+<!--/viz:bigram-heat-->
+<h2>The zero problem and smoothing</h2>
+<div class="box ex"><span class="lbl">Example: "you drink coffee"</span>
+<p>P(drink | you) = C(you drink)/C(you) = 0/1 = <b>0</b>, so the whole sentence gets probability 0 and perplexity becomes infinite. Is the sentence wrong? No. Our corpus is just small. This is <b>sparsity</b>: real sequences missing from the training data.</p></div>
+
+<h3>1. &lt;UNK&gt; for unknown words</h3>
+<p>Add a special token <code>&lt;UNK&gt;</code> to the vocabulary and map every out-of-vocabulary (OOV) word to it. "Sam I do like <i>linguistics</i>" becomes "Sam I do like &lt;UNK&gt;". The model never sees a truly unknown word again.</p>
+
+<h3>2. Add-one (Laplace) smoothing</h3>
+<p>Pretend every possible event was seen once more than it really was. To keep probabilities summing to 1, add the vocabulary size V to the denominator:</p>
+<div class="formula">P<sub>add-1</sub>(w) = (C(w) + 1) / (N + V) &nbsp;&nbsp;&nbsp; P<sub>add-1</sub>(w | prev) = (C(prev w) + 1) / (C(prev) + V)</div>
+<div class="box an"><span class="lbl">Analogy: the fruit bag</span><p>Your bag has 2 bananas and 2 apples, and someone asks for an orange. To give the orange a fair (small) chance without changing the overall proportions, you add one of <i>every</i> fruit, not just one orange. That's why we add 1 to every count and V to the total.</p></div>
+<div class="box ex"><span class="lbl">Worked example: add-one on our corpus</span>
+<p>V = 7 types {I, like, tea, coffee, you, drink, &lt;/s&gt;}.</p>
+<p><b>"you drink coffee"</b>: (1+1)/(4+7) × (0+1)/(1+7) × (0+1)/(1+7) × (1+1)/(1+7) = 0.182 × 0.125 × 0.125 × 0.25 ≈ <b>0.00071</b>. Small but not zero.</p>
+<p><b>"I like tea"</b> now: (3+1)/(4+7) × (2+1)/(3+7) × (2+1)/(3+7) × (3+1)/(3+7) ≈ <b>0.013</b> (was 0.333).</p>
+<p>Smoothing <b>steals probability mass</b> from seen events and gives it to unseen ones. Add-one steals a lot, which is why better methods exist: absolute discounting, Good–Turing, Witten–Bell, Kneser–Ney.</p></div>
+
+<h3>3. Interpolation and back-off</h3>
+<p><b>Interpolation:</b> mix all orders with weights that sum to 1:</p>
+<div class="formula">P̂(w | u, v) = λ₃·P(w | u, v) + λ₂·P(w | v) + λ₁·P(w) , &nbsp; λ₁+λ₂+λ₃ = 1</div>
+<p>Choose the λs on a held-out (dev) set, as usual in ML: train / dev / test.</p>
+<p><b>Back-off:</b> if the trigram was never seen, fall back to the bigram, then to the unigram. Estimate <i>something</i>, never a blank zero.</p>
+<div class="box exam"><span class="lbl">Problem with back-off (asked in class)</span>
+<p>A zero is sometimes <b>meaningful</b>. "John eats <i>blue</i>" or "I <i>eats</i>" are rare because they're nonsense or ungrammatical, not because the corpus is small. Backing off to the unigram P(blue) gives them a respectable score anyway. <b>Unseen ≠ merely sparse.</b> Sometimes the data is telling you the sequence is improbable.</p></div>
+
+<h2>Evaluating language models</h2>
+<div class="two">
+<div class="card"><h4>Intrinsic</h4><p><b>Likelihood</b> P(test | M) (higher is better), <b>log-likelihood</b> (avoids underflow), <b>perplexity</b> (lower is better).</p></div>
+<div class="card"><h4>Extrinsic</h4><p>Plug the LM into a task: the word-order preference task, speech recognition, machine translation. Does it make the choices humans make?</p></div>
+</div>
+<div class="box key"><span class="lbl">Golden rules</span><ul>
+<li><b>Never train on the test set.</b> The model would have "seen the answers", and its perplexity would be artificially low. That's cheating.</li>
+<li>Typically unigram PP &gt; bigram PP &gt; trigram PP (e.g. Jurafsky &amp; Martin's Wall Street Journal numbers), because more context means fewer choices.</li>
+<li><b>Only compare perplexities of models with the same vocabulary.</b> Comparing two pre-trained LMs with different vocabularies is apples vs oranges.</li>
+<li>N-grams work well when the test text resembles the training text. In real life it often doesn't, so we need models that <b>generalise</b> and handle unseen words.</li>
+</ul></div>
+
+<!--viz:ppl-orders-->
+<figure class="diagram viz" id="fig-ppl-orders"><svg class="vz" viewBox="0 0 440 255" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="More context makes the model less &quot;perplexed&quot;: perplexity drops from 962 to 170 to 109 as n grows." style="max-width:440px" font-family="Inter,system-ui,sans-serif" font-size="13"><line x1="70.0" y1="220.0" x2="400.0" y2="220.0" class="grid" stroke-width="1"/><text x="64.0" y="224.0" text-anchor="end" class="mut" font-size="11">0</text><line x1="70.0" y1="172.5" x2="400.0" y2="172.5" class="grid" stroke-width="1"/><text x="64.0" y="176.5" text-anchor="end" class="mut" font-size="11">250</text><line x1="70.0" y1="125.0" x2="400.0" y2="125.0" class="grid" stroke-width="1"/><text x="64.0" y="129.0" text-anchor="end" class="mut" font-size="11">500</text><line x1="70.0" y1="77.5" x2="400.0" y2="77.5" class="grid" stroke-width="1"/><text x="64.0" y="81.5" text-anchor="end" class="mut" font-size="11">750</text><line x1="70.0" y1="30.0" x2="400.0" y2="30.0" class="grid" stroke-width="1"/><text x="64.0" y="34.0" text-anchor="end" class="mut" font-size="11">1000</text><line x1="70.0" y1="220.0" x2="400.0" y2="220.0" class="ax" stroke-width="1.2"/><line x1="70.0" y1="30.0" x2="70.0" y2="220.0" class="ax" stroke-width="1.2"/><text x="28.0" y="125.0" text-anchor="middle" class="mut" font-size="12" transform="rotate(-90 28 125.0)">perplexity (lower is better)</text><rect x="83.8" y="37.2" width="82.5" height="182.8" rx="4" class="c4"/><text x="125.0" y="32.2" text-anchor="middle" class="" font-size="11" font-weight="600">962</text><text x="125.0" y="236.0" text-anchor="middle" class="mut" font-size="12">Unigram</text><rect x="193.8" y="187.7" width="82.5" height="32.3" rx="4" class="c1"/><text x="235.0" y="182.7" text-anchor="middle" class="" font-size="11" font-weight="600">170</text><text x="235.0" y="236.0" text-anchor="middle" class="mut" font-size="12">Bigram</text><rect x="303.8" y="199.3" width="82.5" height="20.7" rx="4" class="c3"/><text x="345.0" y="194.3" text-anchor="middle" class="" font-size="11" font-weight="600">109</text><text x="345.0" y="236.0" text-anchor="middle" class="mut" font-size="12">Trigram</text><text x="235.0" y="18.0" text-anchor="middle" class="" font-size="12" font-weight="700">WSJ test set (slide table)</text></svg><figcaption>More context makes the model less "perplexed": perplexity drops from 962 to 170 to 109 as n grows.</figcaption></figure>
+<!--/viz:ppl-orders-->
+<h2>Another way to picture an LM: finite-state automata</h2>
+<p>Words as nodes, transitions as arrows labelled with probabilities. P(he → is) is just the weight on that arrow. This view comes back with HMMs in the next topic. Context-free grammars and dependency trees are yet more ways to represent language structure.</p>
+
+<h2>Hands-on: SRILM toolkit</h2>
+<pre><code># 1) train a bigram LM (counts + ARPA-format model) with add-one smoothing
+ngram-count -text train.txt -order 2 -write train.bigram.count \
+            -lm train.bigram.lm -addsmooth 1 -unk
+
+# 2) score test sentences: per-word probabilities, logprob, ppl, ppl1
+ngram -lm train.bigram.lm -ppl test.txt -debug 2 -unk</code></pre>
+<p>In class, every per-word probability, logprob, PPL and PPL1 from SRILM matched the hand calculations exactly. The model isn't a black box: it's counting and dividing. The follow-up in-class activity repeated this on the <b>Brown corpus</b> (a mixed-genre corpus of news, religion, romance and more, with POS tags).</p>
+
+<div class="box exam"><span class="lbl">Exam tip</span>
+<p>Expect hand calculations: bigram/unigram probabilities from a toy corpus, sentence probability via the chain rule, log-prob, perplexity (and which N to use), add-one smoothing with V, and short answers on back-off vs interpolation and why the test set must stay unseen.</p></div>
+<div class="box try"><span class="lbl">Try it</span>
+<p>Using the corpus above, compute P("you like coffee") with the bigram model. (Answer: 1/4 × 1 × 1/3 × 1 ≈ 0.083.)</p></div>
+<!--viz:interp-->
+<figure class="diagram viz" id="fig-interp"><svg class="vz" viewBox="0 0 540 265" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Linear interpolation from the SRILM lab notebook: P = λ·P&lt;sub&gt;bigram&lt;/sub&gt; + (1−λ)·P&lt;sub&gt;unigram&lt;/sub&gt; on &quot;Sam I do like linguistics&quot; (both add-one smoothed, &amp;lt;unk&amp;gt; for linguistics). The three dots are exactly SRILM&#x27;s outputs (7.82454, 6.63422, 5.8464). On this toy sentence more bigram weight always helps; on real dev data the best λ sits in between, which is why you tune it." style="max-width:540px" font-family="Inter,system-ui,sans-serif" font-size="13"><line x1="70.0" y1="215.0" x2="510.0" y2="215.0" class="grid" stroke-width="1"/><text x="64.0" y="219.0" text-anchor="end" class="mut" font-size="11">5.5</text><line x1="70.0" y1="177.0" x2="510.0" y2="177.0" class="grid" stroke-width="1"/><text x="64.0" y="181.0" text-anchor="end" class="mut" font-size="11">6</text><line x1="70.0" y1="139.0" x2="510.0" y2="139.0" class="grid" stroke-width="1"/><text x="64.0" y="143.0" text-anchor="end" class="mut" font-size="11">6.5</text><line x1="70.0" y1="101.0" x2="510.0" y2="101.0" class="grid" stroke-width="1"/><text x="64.0" y="105.0" text-anchor="end" class="mut" font-size="11">7</text><line x1="70.0" y1="63.0" x2="510.0" y2="63.0" class="grid" stroke-width="1"/><text x="64.0" y="67.0" text-anchor="end" class="mut" font-size="11">7.5</text><line x1="70.0" y1="25.0" x2="510.0" y2="25.0" class="grid" stroke-width="1"/><text x="64.0" y="29.0" text-anchor="end" class="mut" font-size="11">8</text><line x1="70.0" y1="215.0" x2="70.0" y2="219.0" class="ax" stroke-width="1"/><text x="70.0" y="232.0" text-anchor="middle" class="mut" font-size="11">0</text><line x1="180.0" y1="215.0" x2="180.0" y2="219.0" class="ax" stroke-width="1"/><text x="180.0" y="232.0" text-anchor="middle" class="mut" font-size="11">0.25</text><line x1="290.0" y1="215.0" x2="290.0" y2="219.0" class="ax" stroke-width="1"/><text x="290.0" y="232.0" text-anchor="middle" class="mut" font-size="11">0.5</text><line x1="400.0" y1="215.0" x2="400.0" y2="219.0" class="ax" stroke-width="1"/><text x="400.0" y="232.0" text-anchor="middle" class="mut" font-size="11">0.75</text><line x1="510.0" y1="215.0" x2="510.0" y2="219.0" class="ax" stroke-width="1"/><text x="510.0" y="232.0" text-anchor="middle" class="mut" font-size="11">1</text><line x1="70.0" y1="215.0" x2="510.0" y2="215.0" class="ax" stroke-width="1.2"/><line x1="70.0" y1="25.0" x2="70.0" y2="215.0" class="ax" stroke-width="1.2"/><text x="290.0" y="251.0" text-anchor="middle" class="mut" font-size="12">λ (weight on the smoothed bigram)</text><text x="28.0" y="120.0" text-anchor="middle" class="mut" font-size="12" transform="rotate(-90 28 120.0)">perplexity</text><path d="M70.0,38.3 L74.4,40.6 L78.8,42.8 L83.2,45.1 L87.6,47.3 L92.0,49.4 L96.4,51.6 L100.8,53.7 L105.2,55.8 L109.6,57.9 L114.0,60.0 L118.4,62.0 L122.8,64.1 L127.2,66.1 L131.6,68.1 L136.0,70.0 L140.4,72.0 L144.8,73.9 L149.2,75.8 L153.6,77.7 L158.0,79.6 L162.4,81.5 L166.8,83.3 L171.2,85.1 L175.6,86.9 L180.0,88.7 L184.4,90.5 L188.8,92.3 L193.2,94.0 L197.6,95.7 L202.0,97.5 L206.4,99.1 L210.8,100.8 L215.2,102.5 L219.6,104.2 L224.0,105.8 L228.4,107.4 L232.8,109.0 L237.2,110.6 L241.6,112.2 L246.0,113.8 L250.4,115.3 L254.8,116.9 L259.2,118.4 L263.6,119.9 L268.0,121.5 L272.4,122.9 L276.8,124.4 L281.2,125.9 L285.6,127.4 L290.0,128.8 L294.4,130.2 L298.8,131.7 L303.2,133.1 L307.6,134.5 L312.0,135.9 L316.4,137.2 L320.8,138.6 L325.2,140.0 L329.6,141.3 L334.0,142.6 L338.4,144.0 L342.8,145.3 L347.2,146.6 L351.6,147.9 L356.0,149.2 L360.4,150.4 L364.8,151.7 L369.2,153.0 L373.6,154.2 L378.0,155.4 L382.4,156.7 L386.8,157.9 L391.2,159.1 L395.6,160.3 L400.0,161.5 L404.4,162.7 L408.8,163.8 L413.2,165.0 L417.6,166.2 L422.0,167.3 L426.4,168.5 L430.8,169.6 L435.2,170.7 L439.6,171.8 L444.0,172.9 L448.4,174.0 L452.8,175.1 L457.2,176.2 L461.6,177.3 L466.0,178.4 L470.4,179.4 L474.8,180.5 L479.2,181.5 L483.6,182.6 L488.0,183.6 L492.4,184.6 L496.8,185.7 L501.2,186.7 L505.6,187.7 L510.0,188.7" class="ln1" stroke-width="3" fill="none"/><circle cx="70.0" cy="38.3" r="5" class="c2"/><text x="78.0" y="30.3" text-anchor="start" class="" font-size="11" font-weight="600">unigram only 7.82</text><circle cx="290.0" cy="128.8" r="5" class="c2"/><text x="298.0" y="120.8" text-anchor="start" class="" font-size="11" font-weight="600">λ = 0.5 → 6.63</text><circle cx="510.0" cy="188.7" r="5" class="c2"/><text x="502.0" y="208.7" text-anchor="end" class="" font-size="11" font-weight="600">bigram only 5.85</text></svg><figcaption>Linear interpolation from the SRILM lab notebook: P = λ·P<sub>bigram</sub> + (1−λ)·P<sub>unigram</sub> on "Sam I do like linguistics" (both add-one smoothed, &lt;unk&gt; for linguistics). The three dots are exactly SRILM's outputs (7.82454, 6.63422, 5.8464). On this toy sentence more bigram weight always helps; on real dev data the best λ sits in between, which is why you tune it.</figcaption></figure>
+<!--/viz:interp-->
+<!--viz:srilm-->
+<figure class="diagram viz" id="fig-srilm"><svg class="vz" viewBox="0 0 900 125" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The three SRILM steps from the lab handout (SRILM_Activity.pdf). Commands are in the highlighted boxes." style="max-width:900px" font-family="Inter,system-ui,sans-serif" font-size="13"><rect x="10.0" y="30.0" width="112.0" height="56.0" rx="10" class="bx"/><text x="66.0" y="54.0" text-anchor="middle" class="" font-size="12" font-weight="600">training text</text><text x="66.0" y="70.0" text-anchor="middle" class="mut" font-size="11">brown-train.txt</text><line x1="123.0" y1="58.0" x2="134.0" y2="58.0" class="ar" stroke-width="1.8"/><polygon points="134.0,58.0 126.6,61.1 126.6,54.9" class="arf"/><rect x="136.0" y="30.0" width="112.0" height="56.0" rx="10" class="bx1"/><text x="192.0" y="54.0" text-anchor="middle" class="" font-size="12" font-weight="600">ngram-count</text><text x="192.0" y="70.0" text-anchor="middle" class="mut" font-size="11">-order 2 -write</text><line x1="249.0" y1="58.0" x2="260.0" y2="58.0" class="ar" stroke-width="1.8"/><polygon points="260.0,58.0 252.6,61.1 252.6,54.9" class="arf"/><rect x="262.0" y="30.0" width="112.0" height="56.0" rx="10" class="bx"/><text x="318.0" y="54.0" text-anchor="middle" class="" font-size="12" font-weight="600">.count file</text><text x="318.0" y="70.0" text-anchor="middle" class="mut" font-size="11">n-gram counts</text><line x1="375.0" y1="58.0" x2="386.0" y2="58.0" class="ar" stroke-width="1.8"/><polygon points="386.0,58.0 378.6,61.1 378.6,54.9" class="arf"/><rect x="388.0" y="30.0" width="112.0" height="56.0" rx="10" class="bx1"/><text x="444.0" y="54.0" text-anchor="middle" class="" font-size="12" font-weight="600">ngram-count</text><text x="444.0" y="70.0" text-anchor="middle" class="mut" font-size="11">-lm -addsmooth / -unk</text><line x1="501.0" y1="58.0" x2="512.0" y2="58.0" class="ar" stroke-width="1.8"/><polygon points="512.0,58.0 504.6,61.1 504.6,54.9" class="arf"/><rect x="514.0" y="30.0" width="112.0" height="56.0" rx="10" class="bx"/><text x="570.0" y="54.0" text-anchor="middle" class="" font-size="12" font-weight="600">.lm file</text><text x="570.0" y="70.0" text-anchor="middle" class="mut" font-size="11">ARPA probabilities</text><line x1="627.0" y1="58.0" x2="638.0" y2="58.0" class="ar" stroke-width="1.8"/><polygon points="638.0,58.0 630.6,61.1 630.6,54.9" class="arf"/><rect x="640.0" y="30.0" width="112.0" height="56.0" rx="10" class="bx1"/><text x="696.0" y="54.0" text-anchor="middle" class="" font-size="12" font-weight="600">ngram -ppl</text><text x="696.0" y="70.0" text-anchor="middle" class="mut" font-size="11">-debug 2</text><line x1="753.0" y1="58.0" x2="764.0" y2="58.0" class="ar" stroke-width="1.8"/><polygon points="764.0,58.0 756.6,61.1 756.6,54.9" class="arf"/><rect x="766.0" y="30.0" width="112.0" height="56.0" rx="10" class="bx"/><text x="822.0" y="54.0" text-anchor="middle" class="" font-size="12" font-weight="600">logprob, ppl</text><text x="822.0" y="70.0" text-anchor="middle" class="mut" font-size="11">per word &amp; per file</text><text x="450.0" y="110.0" text-anchor="middle" class="mut" font-size="12">Step 1: count  →  Step 2: estimate (smooth, back off)  →  Step 3: test (perplexity)</text></svg><figcaption>The three SRILM steps from the lab handout (SRILM_Activity.pdf). Commands are in the highlighted boxes.</figcaption></figure>
+<!--/viz:srilm-->
+<h2>From the lecture slides</h2>
+<h3>Markov chain as a weighted finite-state machine</h3>
+<p>States are words (<i>He, cool, is</i>), arcs are transition probabilities, and a start distribution π = [0.7, 0.1, 0.2] gives the probability of starting with He, cool or is.</p>
+<div class="box ex"><span class="lbl">Slide example: P(is he cool)</span>
+<p>π(is) × P(he | is) × P(cool | he) = 0.2 × 0.5 × 0.3 = <b>0.03</b>. (In class: P(he → is) was read off the arc as 0.6.)</p></div>
+<h3>Perplexity across n-gram orders (slide table, WSJ)</h3>
+<div class="tbl-wrap"><table><tr><th></th><th>Unigram</th><th>Bigram</th><th>Trigram</th></tr><tr><td>Perplexity</td><td>962</td><td>170</td><td>109</td></tr></table></div>
+<p>More context means fewer choices, so lower perplexity. These are only comparable because the models use <b>identical vocabularies</b>.</p>
+<h3>The problem of zeros (Berkeley Restaurant Project, 9,222 sentences)</h3>
+<p>In the bigram count table, most cells are 0 even though counts like <i>i want</i> = 827, <i>want to</i> = 608, <i>to eat</i> = 686, <i>chinese food</i> = 82 are large. Smoothing "steals probability mass to generalise better".</p>
+<h3>Katz back-off (1987)</h3>
+<div class="formula">P̂(wᵢ | wᵢ₋₂wᵢ₋₁) = P(wᵢ|wᵢ₋₂wᵢ₋₁) if C(wᵢ₋₂wᵢ₋₁wᵢ) &gt; 0 ; &nbsp; α₁P(wᵢ|wᵢ₋₁) if C(trigram) = 0 and C(wᵢ₋₁wᵢ) &gt; 0 ; &nbsp; α₂P(wᵢ) otherwise<small>non-linear: back off through progressively shorter histories (α's keep it a valid distribution)</small></div>
+<p><b>Best approach in practice</b> (slide): simple linear interpolation + a smoothed probability for OOV words, with λ tuned on a <b>dev set (~10–20%)</b> held out from training, then reported once on test.</p>
+<h3>SRILM file formats</h3>
+<ul><li><b>Count file</b>: each n-gram with its count (e.g. <code>&lt;s&gt; Sam 3</code>, <code>Sam I 3</code>, <code>I am 2</code>).</li>
+<li><b>LM (ARPA) file</b>: log₁₀ probability, the n-gram, and the log₁₀ <b>back-off weight</b>.</li>
+<li><b>Test output</b>: total logprob (base 10), <b>ppl</b> with N = #words + #&lt;/s&gt;, <b>ppl1</b> with N = #words.</li></ul>
+<h3>Appendix: Shannon's noisy channel model</h3>
+<div class="flow"><span>message W</span><b>→</b><span>encoder</span><b>→ X →</b><span>channel p(y|x)</span><b>→ Y →</b><span>decoder</span><b>→</b><span>Ŵ</span></div>
+<p>There's a duality between <b>compression</b> (remove all redundancy) and <b>transmission accuracy</b> (add controlled redundancy). Channel capacity is reached when the input distribution p(X) maximises I(X;Y).</p>
+<div class="formula">Î = argmax<sub>i</sub> p(i | o) = argmax<sub>i</sub> p(i) p(o | i) / p(o) = argmax<sub>i</sub> p(i) · p(o | i)<small>p(i) = language model, p(o|i) = channel probability. Used in machine translation, OCR, speech recognition.</small></div>
+<p>In linguistics we can't control the encoding, so we just decode the most likely input. The LM is what makes "I will be back soonish" win over "bassoon dish".</p>
+<h2 id="numericals">Numericals</h2>
+<h3 class="numh"><span class="tag-class">From class</span> The in-class activity (exact slide data)</h3>
+<pre><code>&lt;s&gt; I am Sam &lt;/s&gt;
+&lt;s&gt; Sam I am &lt;/s&gt;
+&lt;s&gt; Sam I like &lt;/s&gt;
+&lt;s&gt; Sam I do like &lt;/s&gt;
+&lt;s&gt; do I like Sam &lt;/s&gt;</code></pre>
+<p><b>Questions on the slide:</b> using (1) a bigram LM and (2) a unigram LM, which sentence is better (higher probability)? (a) Sam I do I like (b) Sam I am (c) Sam I do like linguistics.</p>
+<p><b>Counts:</b> 17 words, Sam 5, I 5, like 3, am 2, do 2, &lt;/s&gt; 5 (22 tokens incl. &lt;/s&gt;).<br>
+<b>Bigrams:</b> &lt;s&gt; Sam 3 · &lt;s&gt; I 1 · &lt;s&gt; do 1 · Sam I 3 · Sam &lt;/s&gt; 2 · I am 2 · I like 2 · I do 1 · am Sam 1 · am &lt;/s&gt; 1 · do like 1 · do I 1 · like &lt;/s&gt; 2 · like Sam 1.</p>
+
+<div class="box ex"><span class="lbl">C1(a). Bigram: "Sam I do I like"</span>
+<p>P(Sam|&lt;s&gt;) 3/5 · P(I|Sam) 3/5 · P(do|I) 1/5 · P(I|do) 1/2 · P(like|I) 2/5 · P(&lt;/s&gt;|like) 2/3<br>
+= 0.6 × 0.6 × 0.2 × 0.5 × 0.4 × 0.667 = <b>0.0096</b><br>
+SRILM: logprob = <b>−2.01773</b>, ppl (N = 6) = <b>2.16914</b>, ppl1 (N = 5) = <b>2.53248</b></p></div>
+<div class="box ex"><span class="lbl">C1(b). Bigram: "Sam I am"</span>
+<p>P(Sam|&lt;s&gt;) 0.6 · P(I|Sam) 0.6 · P(am|I) 2/5 = 0.4 · P(&lt;/s&gt;|am) 1/2 = 0.5 → <b>0.072</b><br>
+SRILM: logprob = <b>−1.14267</b>, ppl = <b>1.93049</b>, ppl1 = <b>2.40375</b></p></div>
+<div class="box ex"><span class="lbl">C1(c). Bigram: "Sam I do like linguistics"</span>
+<p>C(like linguistics) = 0, so P = <b>0</b> (OOV word). SRILM reports it as a zeroprob/OOV and leaves it out of logprob.<br>
+<b>Answer to Q1:</b> (b) "Sam I am" is best (0.072 &gt; 0.0096 &gt; 0).</p></div>
+<div class="box ex"><span class="lbl">C1(d). The whole test file (SRILM summary line)</span>
+<p>2 sentences, 8 words: logprob = −2.01773 + (−1.14267) = <b>−3.1604</b>; ppl = 10<sup>3.1604/10</sup> = <b>2.07033</b>; ppl1 = 10<sup>3.1604/8</sup> = <b>2.48342</b>.</p></div>
+<div class="box ex"><span class="lbl">C2. Unigram (denominator 22)</span>
+<p>(a) (5/22)(5/22)(2/22)(5/22)(3/22)(5/22) ≈ 3.3 × 10⁻⁵ → logprob <b>−4.4805</b>, ppl <b>5.58</b>, ppl1 <b>7.87</b><br>
+(b) (5/22)(5/22)(2/22)(5/22) ≈ 0.00107 → logprob −2.972, ppl 5.53, ppl1 9.79<br>
+(c) P(linguistics) = 0, so 0. <b>Answer to Q2:</b> (b) again.</p></div>
+<div class="box ex"><span class="lbl">C3. Fixing the OOV: &lt;UNK&gt; + add-one (unigram)</span>
+<p>V = 6 types (Sam, I, am, like, do, &lt;/s&gt;) + &lt;UNK&gt; = 7. P(w) = (C(w)+1)/(22+7).<br>
+Sam 6/29 = 0.207 · I 6/29 · do 3/29 = 0.103 · like 4/29 = 0.138 · &lt;UNK&gt; 1/29 = <b>0.034</b> · &lt;/s&gt; 6/29<br>
+P("Sam I do like &lt;UNK&gt;") ≈ 4.36 × 10⁻⁶ → logprob <b>−5.36</b>, ppl <b>7.82</b>, ppl1 <b>11.81</b> (matches SRILM with <code>-addsmooth 1</code>)</p></div>
+
+<h3 class="numh"><span class="tag-class">From class</span> The official solution sheet and the SRILM lab notebook</h3>
+<p>The instructor's solution sheet (<i>Solution-Inclass-6</i>) works the same activity by hand, and the lab notebook (<i>SRILM-tutorial-Toy-dataset</i>) runs it in SRILM. Two small things to notice: hand rounding (0.667 instead of 2/3) gives logprob −2.0156, while SRILM gives −2.01773; and perplexity is computed two ways, with N = words + &lt;/s&gt; (ppl) and N = words only (ppl1).</p>
+<div class="tbl-wrap"><table>
+<tr><th>Sentence</th><th>Model</th><th>P(S)</th><th>log₁₀ P</th><th>ppl</th><th>ppl1</th></tr>
+<tr><td>Sam I do I like</td><td>bigram</td><td>0.009648</td><td>−2.0156 (SRILM −2.01773)</td><td>2.167</td><td>2.530</td></tr>
+<tr><td>Sam I am</td><td>bigram</td><td>0.072</td><td>−1.14266</td><td>1.9305</td><td>2.4037</td></tr>
+<tr><td>Sam I do I like</td><td>unigram</td><td>0.0000325</td><td>−4.4881</td><td>5.598</td><td>7.900</td></tr>
+<tr><td>Sam I am</td><td>unigram</td><td>0.001066</td><td>−2.9721</td><td>5.534</td><td>9.789</td></tr>
+<tr><td>Sam I do like linguistics</td><td>bigram or unigram (no smoothing)</td><td>0</td><td>−∞</td><td>∞</td><td>∞</td></tr>
+<tr><td>Sam I do like &lt;unk&gt;</td><td>add-one unigram (|V| = 7)</td><td>4.28 × 10⁻⁶</td><td>−5.3686 (SRILM −5.36075)</td><td>7.848 (SRILM 7.82454)</td><td>11.85 (SRILM 11.8073)</td></tr>
+<tr><td>Sam I do like &lt;unk&gt;</td><td>add-one bigram (SRILM)</td><td>2.50 × 10⁻⁵</td><td>−4.60133</td><td>5.8464</td><td>8.32274</td></tr>
+<tr><td>Sam I do like &lt;unk&gt;</td><td>interpolated, λ = 0.5 (SRILM)</td><td>1.17 × 10⁻⁵</td><td>−4.93074</td><td>6.63422</td><td>9.68608</td></tr>
+</table></div>
+<div class="box ex"><span class="lbl">C4. Add-one (Laplace) smoothed bigram, step by step</span>
+<p>Rule: P(w | prev) = (C(prev w) + 1) / (C(prev) + |V|), with |V| = 7 (I, am, Sam, like, do, &lt;/s&gt;, UNK).</p>
+<p>P(Sam|&lt;s&gt;) = (3+1)/(5+7) = 4/12 = 0.333 · P(I|Sam) = 4/12 = 0.333 · P(do|I) = (1+1)/(5+7) = 2/12 = 0.167 · P(like|do) = (1+1)/(2+7) = 2/9 = 0.222 · P(UNK|like) = (0+1)/(3+7) = 1/10 · P(&lt;/s&gt;|UNK) = (0+1)/(0+7) = 1/7.</p>
+<p>Pure add-one bigram: P(S) = 0.333² × 0.167 × 0.222 × 0.1 × 0.143 ≈ <b>5.9 × 10⁻⁵</b> (log₁₀ ≈ −4.23).</p>
+<p>The solution sheet instead uses the smoothed <i>unigram</i> values for the two unseen steps (0.034 and 0.207): 0.333² × 0.167 × 0.222 × 0.034 × 0.207 = <b>2.893 × 10⁻⁵</b>, logprob −4.5387, ppl 5.707, ppl1 8.086. SRILM does something similar: it <b>backs off</b> to the unigram for the unseen bigrams, P(&lt;unk&gt;|like) = 0.0294 and P(&lt;/s&gt;|&lt;unk&gt;) = 0.207, giving <b>−4.60133</b>. Either way, the smoothed bigram beats the smoothed unigram (ppl ≈ 5.8 vs 7.8).</p></div>
+<div class="box ex"><span class="lbl">C5. Linear interpolation (SRILM -mix-lm, -lambda 0.5)</span>
+<p>P<sub>interp</sub>(w | prev) = λ·P<sub>bigram</sub> + (1 − λ)·P<sub>unigram</sub>. With λ = 0.5: P(Sam|&lt;s&gt;) = 0.5 × 0.3333 + 0.5 × 0.2069 = <b>0.2701</b>; P(&lt;unk&gt;|like) = 0.5 × 0.0294 + 0.5 × 0.0345 = <b>0.0319</b>.</p>
+<p>Multiplying all six: logprob = <b>−4.93074</b>, ppl = 10<sup>4.93074/6</sup> = <b>6.634</b>. With the extra OOV word in "Sam I do like computational linguistics": logprob −6.39314, ppl <b>8.19</b>, ppl1 11.63. The chart above shows how ppl moves with λ.</p></div>
+<h3 class="numh"><span class="tag-prac">Practice</span> Same corpus, same level</h3>
+<details class="sol"><summary class="q">P1. Bigram probability of "I am Sam". logprob, ppl, ppl1?</summary>
+<p>P(I|&lt;s&gt;) 1/5 × P(am|I) 2/5 × P(Sam|am) 1/2 × P(&lt;/s&gt;|Sam) 2/5 = <b>0.016</b>. log₁₀ = −1.796, ppl (N = 4) = 2.81, ppl1 (N = 3) = 3.97.</p></details>
+<details class="sol"><summary class="q">P2. Bigram "I like Sam" vs "do I like": which is better?</summary>
+<p>"I like Sam" = 0.2 × 0.4 × 1/3 × 0.4 = <b>0.0107</b>. "do I like" = 0.2 × 0.5 × 0.4 × 2/3 = <b>0.0267</b>. So "do I like" is better.</p></details>
+<details class="sol"><summary class="q">P3. Bigram "Sam I like Sam". Compare with the unigram model.</summary>
+<p>Bigram: 0.6 × 0.6 × 0.4 × 1/3 × 0.4 = <b>0.0192</b> (ppl 2.20). Unigram: (5/22)(5/22)(3/22)(5/22)(5/22) ≈ 0.00036 (ppl 4.87). The bigram uses context, so it's far more confident.</p></details>
+<details class="sol"><summary class="q">P4. "Sam am" contains an unseen bigram. Bigram MLE? Add-one bigram with V = 6?</summary>
+<p>MLE: P(am|Sam) = 0/5, so P = 0. Add-one: (3+1)/(5+6) × (0+1)/(5+6) × (1+1)/(2+6) = 0.364 × 0.091 × 0.25 ≈ <b>0.0083</b>.</p></details>
+<details class="sol"><summary class="q">P5. Interpolation with λ₃ = 0.6, λ₂ = 0.3, λ₁ = 0.1: P(like | do I)? (Trigram C(do I like) = 1, C(do I) = 1.)</summary>
+<p>Trigram = 1/1 = 1, bigram P(like|I) = 0.4, unigram P(like) = 3/22. So 0.6(1) + 0.3(0.4) + 0.1(0.136) ≈ <b>0.734</b>.</p></details>
+<details class="sol"><summary class="q">P6. Using the Markov-chain slide, which is more probable as a start: "He …" or "is …"? What is π(cool)?</summary>
+<p>π(He) = 0.7 &gt; π(is) = 0.2. π(cool) = 0.1. (π must sum to 1: 0.7 + 0.1 + 0.2 = 1.)</p></details>

@@ -1,0 +1,115 @@
+<div class="tldr"><h3>In 30 seconds</h3><ul>
+<li>Asking "can machines understand language?" leads to "can machines think?" and "is the mind an information-processing system?"</li>
+<li><b>Marr's three levels</b> are a checklist for studying any information-processing system: <b>what &amp; why</b> (computational), <b>how</b> (algorithmic), <b>with what hardware</b> (implementational).</li>
+<li>Design <b>top-down</b> (1→2→3), validate <b>bottom-up</b> (3→2→1).</li>
+<li>The <b>Turing test</b> defines intelligence by behaviour: if you can't tell machine from human in a text chat, it "passes".</li>
+<li>The <b>Total Turing test</b> adds the real world: perception (vision) and action (robot limbs). That's why this course combines vision <i>and</i> language.</li>
+</ul></div>
+<h2>What each idea is for</h2>
+<div class="tbl-wrap"><table class="uses">
+<tr><th>Concept</th><th>What it's for</th><th>Where it's used</th></tr>
+<tr><td>Marr's 3 levels</td><td>A checklist for designing or analysing any information-processing system without jumping straight to code</td><td>System design docs, research papers ("what problem, what algorithm, what hardware")</td></tr>
+<tr><td>Top-down / bottom-up</td><td>Design from the goal down; validate from the parts up</td><td>Engineering projects, debugging, ablation studies</td></tr>
+<tr><td>Turing test</td><td>A practical, behaviour-based way to judge "intelligence"</td><td>Chatbot evaluation, human-vs-AI detection studies</td></tr>
+<tr><td>Total Turing test</td><td>Adds perception and action, giving a fuller standard for intelligence</td><td>Robotics, embodied AI, vision-language-action models</td></tr>
+<tr><td>Think vs act / human vs rational</td><td>Clarifies what kind of AI you are actually building</td><td>Setting goals and evaluation criteria for an AI project</td></tr>
+</table></div>
+
+
+<h2>Wear two hats: scientist and engineer</h2>
+<p>The professor asked us to look at every problem from two sides. The <b>engineer</b> builds a system that works. The <b>scientist</b> asks <i>why</i> it works. Many people do only one: they build a great system without knowing how it works, or understand the theory but never build anything. A good AI researcher does both.</p>
+
+<h2>A chain of big questions</h2>
+<div class="flow"><span>Can machines understand language?</span><b>→</b><span>Language is tied to thought, so can machines think?</span><b>→</b><span>The mind processes information, so do machines process it the same way?</span><b>→</b><span>Can we reverse-engineer cognition?</span></div>
+<p>Humans have limits: small working memory, time pressure (we have to speak in real time), limited information. If machines follow similar cognitive processes, could we build systems that copy them? That's where <b>cognitive science, computer vision, NLU and AI</b> meet.</p>
+
+<h2>Marr's three levels of analysis</h2>
+<p>David Marr (1970s) said that to understand <i>any</i> information-processing system, whether vision, language, or a calculator, you have to describe it at three levels:</p>
+<div class="tbl-wrap"><table>
+<tr><th>Level</th><th>Question it answers</th><th>For a computer</th><th>For the brain</th></tr>
+<tr><td><b>1. Computational</b></td><td><b>What</b> is the goal, and <b>why</b>? What's the logic of the strategy?</td><td>The problem you're solving</td><td>What the mind is trying to achieve</td></tr>
+<tr><td><b>2. Algorithmic / representational</b></td><td><b>How</b>? How are input and output represented, and what steps turn one into the other?</td><td>The algorithm (input → [box] → output)</td><td>The mental procedure</td></tr>
+<tr><td><b>3. Implementational</b></td><td><b>Where / with what</b> physically?</td><td>CPU, GPU, hardware</td><td>Neurons, brain regions</td></tr>
+</table></div>
+
+<div class="box an"><span class="lbl">Analogy: making tea</span>
+<p><b>Computational:</b> I want a hot drink to wake up. <b>Algorithmic:</b> boil water, add tea leaves, sugar, milk, simmer, strain. <b>Implementational:</b> a gas stove, a steel pan, a strainer. You can swap the stove for an induction cooktop (level 3) without changing the recipe (level 2), and you can swap the recipe without changing the goal (level 1).</p></div>
+
+<div class="box ex"><span class="lbl">Worked example: the in-class activity "make a robot fly"</span>
+<ol class="steps">
+<li><b>Computational (what &amp; why):</b> Goal: make the robot fly, i.e. move through the air against gravity. Why: say, for delivery systems.</li>
+<li><b>Algorithmic (how):</b> To fly like a bird you need to <b>generate thrust</b>, so <b>flap the wings</b> (taking aerodynamics, friction, balance and direction control into account). One student broke it into states: stationary → ascend → fly and balance → descend → stationary.</li>
+<li><b>Implementational (with what):</b> <b>Wings</b> (the word "flap" already tells you wings are needed), motors, sensors, actuators, a lightweight body, a power supply.</li>
+</ol>
+<p><b>How the levels link:</b> going down, level 1 <i>suggests</i> level 2 and level 2 <i>suggests</i> level 3. Going up for validation: wings <i>confirm</i> flapping, and flapping <i>explains</i> flight ("<i>because</i> we flap, we get thrust, <i>because of</i> thrust we take off").</p></div>
+
+<div class="box key"><span class="lbl">Key lesson from the activity</span>
+<p>Almost everyone (online and offline) <b>jumped straight to the method</b> (motors, sensors). That's the classic engineer's rush. Start at the <b>computational level</b>: understand the problem first. Design top-down (1→2→3), validate bottom-up (3→2→1). And you can make a real contribution at <i>any single level</i>.</p></div>
+<p>Why a <i>robot</i>? "Recognise a cat in an image" or "parse a sentence" are mostly software problems (levels 1–2). A flying robot needs all three levels, hardware included.</p>
+
+<!--viz:marr-levels-->
+<figure class="diagram viz" id="fig-marr-levels"><svg class="vz" viewBox="0 0 780 205" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Marr&#x27;s three levels of analysis. The same computational goal can have many algorithms, and the same algorithm many implementations." style="max-width:780px" font-family="Inter,system-ui,sans-serif" font-size="13"><text x="130.0" y="22.0" text-anchor="middle" class="mut" font-size="12" font-weight="700">Level</text><text x="390.0" y="22.0" text-anchor="middle" class="mut" font-size="12" font-weight="700">Question it answers</text><text x="650.0" y="22.0" text-anchor="middle" class="mut" font-size="12" font-weight="700">Example: a calculator</text><rect x="30.0" y="36.0" width="200.0" height="44.0" rx="10" class="bx1"/><text x="130.0" y="62.0" text-anchor="middle" class="" font-size="13" font-weight="600">Computational</text><rect x="270.0" y="36.0" width="240.0" height="44.0" rx="10" class="bx"/><text x="390.0" y="62.0" text-anchor="middle" class="" font-size="12" font-weight="600">WHAT is the goal and why?</text><rect x="550.0" y="36.0" width="200.0" height="44.0" rx="10" class="bx"/><text x="650.0" y="62.0" text-anchor="middle" class="" font-size="12" font-weight="600">Add two numbers</text><line x1="232.0" y1="58.0" x2="268.0" y2="58.0" class="ar" stroke-width="1.8"/><polygon points="268.0,58.0 260.6,61.1 260.6,54.9" class="arf"/><line x1="512.0" y1="58.0" x2="548.0" y2="58.0" class="ar" stroke-width="1.8"/><polygon points="548.0,58.0 540.6,61.1 540.6,54.9" class="arf"/><rect x="30.0" y="90.0" width="200.0" height="44.0" rx="10" class="bx1"/><text x="130.0" y="116.0" text-anchor="middle" class="" font-size="13" font-weight="600">Algorithmic</text><rect x="270.0" y="90.0" width="240.0" height="44.0" rx="10" class="bx"/><text x="390.0" y="116.0" text-anchor="middle" class="" font-size="12" font-weight="600">HOW: which representation &amp; steps?</text><rect x="550.0" y="90.0" width="200.0" height="44.0" rx="10" class="bx"/><text x="650.0" y="116.0" text-anchor="middle" class="" font-size="12" font-weight="600">Column addition with carry</text><line x1="232.0" y1="112.0" x2="268.0" y2="112.0" class="ar" stroke-width="1.8"/><polygon points="268.0,112.0 260.6,115.1 260.6,108.9" class="arf"/><line x1="512.0" y1="112.0" x2="548.0" y2="112.0" class="ar" stroke-width="1.8"/><polygon points="548.0,112.0 540.6,115.1 540.6,108.9" class="arf"/><rect x="30.0" y="144.0" width="200.0" height="44.0" rx="10" class="bx1"/><text x="130.0" y="170.0" text-anchor="middle" class="" font-size="13" font-weight="600">Implementation</text><rect x="270.0" y="144.0" width="240.0" height="44.0" rx="10" class="bx"/><text x="390.0" y="170.0" text-anchor="middle" class="" font-size="12" font-weight="600">WITH WHAT physical stuff?</text><rect x="550.0" y="144.0" width="200.0" height="44.0" rx="10" class="bx"/><text x="650.0" y="170.0" text-anchor="middle" class="" font-size="12" font-weight="600">Neurons / transistors / abacus</text><line x1="232.0" y1="166.0" x2="268.0" y2="166.0" class="ar" stroke-width="1.8"/><polygon points="268.0,166.0 260.6,169.1 260.6,162.9" class="arf"/><line x1="512.0" y1="166.0" x2="548.0" y2="166.0" class="ar" stroke-width="1.8"/><polygon points="548.0,166.0 540.6,169.1 540.6,162.9" class="arf"/></svg><figcaption>Marr's three levels of analysis. The same computational goal can have many algorithms, and the same algorithm many implementations.</figcaption></figure>
+<!--/viz:marr-levels-->
+<h2>What is AI? Four historical views</h2>
+<div class="two">
+<div class="card"><h4>Think like humans</h4><p>"Machines with minds"; studying mental faculties with computational models.</p></div>
+<div class="card"><h4>Act like humans</h4><p>"Make computers do things which, at the moment, people do better."</p></div>
+<div class="card"><h4>Think rationally</h4><p>Logical, correct reasoning.</p></div>
+<div class="card"><h4>Act rationally</h4><p>Behave to achieve the best outcome.</p></div>
+</div>
+<p>The two axes to remember: <b>think vs act</b>, and <b>human-like vs rational</b>.</p>
+
+<h2>The Turing test</h2>
+<p>Alan Turing's original question was "<i>Can machines think?</i>". "Think" is hard to define, so he replaced it with a test of <b>behaviour</b>, the <b>imitation game</b>:</p>
+<figure class="diagram">
+<svg viewBox="0 0 640 140" xmlns="http://www.w3.org/2000/svg" font-family="Inter,sans-serif" font-size="14" fill="currentColor">
+<rect x="20" y="30" width="190" height="80" rx="12" fill="none" stroke="currentColor"/><text x="115" y="65" text-anchor="middle">Room 1</text><text x="115" y="88" text-anchor="middle">🧑 Human interrogator</text>
+<rect x="430" y="30" width="190" height="80" rx="12" fill="none" stroke="currentColor"/><text x="525" y="65" text-anchor="middle">Room 2</text><text x="525" y="88" text-anchor="middle">❓ human or machine?</text>
+<path d="M215 62 H425 M425 78 H215" stroke="#3d5afe" stroke-width="2"/><text x="320" y="55" text-anchor="middle" font-size="12">text messages only</text>
+</svg><figcaption>If the interrogator can't tell who is in Room 2, the machine "passes".</figcaption></figure>
+<p>It's an <b>operational (functional) definition</b> of intelligence: we don't say <i>what</i> intelligence is, only that if the behaviour can't be told apart from a human's, we'll call it intelligent.</p>
+
+<h3>Why the Turing test is not enough</h3>
+<ul>
+<li><b>Two closed rooms:</b> the real world isn't two rooms.</li>
+<li><b>Depends on the interrogator:</b> change the judge and the result may change, so it's not reproducible.</li>
+<li><b>Text only:</b> no handshake, no gestures, no seeing, no touching. Can text alone show intelligence?</li>
+<li>It leaves out emotion, reasoning about the environment, and subconscious processes. A student linked this to Indian philosophical ideas of layered intelligence, and the professor agreed: we need more than a behavioural test.</li>
+</ul>
+
+<h3>The Total Turing test</h3>
+<div class="box key"><span class="lbl">Key idea</span>
+<p>To be <i>truly</i> intelligent, a system has to <b>interact physically with the world</b>. That needs <b>perception</b> (vision and other senses) and <b>actuation</b> (limbs, hands: robotics). This is the Total Turing test, and it's one reason this course is called Foundations of <b>Vision</b> and <b>Language</b>.</p></div>
+<p>To pass it, a computer would need natural language processing, knowledge representation and retrieval, reasoning, computer vision (from the first half of the course), and robotics.</p>
+
+<h2>NLP is everywhere</h2>
+<p>Smart assistants (Alexa, Siri), search engines, Google Translate, predictive text, sentiment dashboards. NLP systems are <b>computational systems that process human language</b> (text, speech, sometimes video) for many applications.</p>
+<div class="box ex"><span class="lbl">Example: is a vending machine an NLP system?</span>
+<p>A plain button machine, not really. Now picture a smart one: a touchscreen shows products, a camera <b>sees</b> what you're pointing at or looking at, and a speech assistant <b>hears</b> "one cold coffee, please" and completes the transaction. That combines <b>vision + language + action</b>, which is exactly the Total Turing test idea in miniature.</p></div>
+
+<div class="box exam"><span class="lbl">Exam tip</span>
+<p>Be ready to (a) apply Marr's three levels to a new problem, listing the <i>what/why</i>, the <i>how</i>, and the <i>physical parts</i>, (b) say which design direction is top-down and which is validation, and (c) give two limitations of the Turing test and say what the Total Turing test adds.</p></div>
+
+<div class="box try"><span class="lbl">Try it</span>
+<p>Apply Marr's levels to "build a system that reads a handwritten bill and speaks the total aloud". What's the goal? Which algorithms (OCR, parsing, text-to-speech)? Which hardware (camera, speaker, processor)?</p></div>
+<h2>From the lecture slides</h2>
+<div class="box key"><span class="lbl">What would a computer need to pass the Turing test? (7 capabilities)</span>
+<ol>
+<li><b>Natural language processing</b>: to communicate with the examiner</li>
+<li><b>Knowledge representation</b>: to store and retrieve information given before or during the interrogation</li>
+<li><b>Automated reasoning</b>: to use the stored information to answer questions and draw new conclusions</li>
+<li><b>Machine learning</b>: to adapt to new circumstances and detect and extrapolate patterns</li>
+<li><b>Vision</b>: to recognise the examiner's actions and the objects presented</li>
+<li><b>Motor control</b>: to act on objects as requested</li>
+<li><b>Other senses</b>: audition, smell, touch, etc.</li>
+</ol>
+<p>Items 5–7 are what the <b>Total</b> Turing test adds. The question on the slide: "Can the machine communicate, perceive, reason, and physically act like a human?"</p></div>
+<p>The slides show the tri-level hypothesis with the same three systems used in class: recognise a cat in an image, parse a sentence, and make a robot fly. The vending machine slide asks: "How do we connect human communication with machine behaviour?"</p>
+<h2 id="numericals">Practice (application questions)</h2>
+<p>No numericals were taught in this lecture. These are application questions in the style of the in-class "robot fly" activity.</p>
+<details class="sol"><summary class="q">P1. Apply Marr's levels to "a system that recognises whether an image contains a cat".</summary>
+<p><b>Computational:</b> output 1/0 for cat present; useful for photo search. <b>Algorithmic:</b> represent the image as a pixel array, extract features (edges, then shapes) with a CNN, classify. <b>Implementational:</b> GPU/CPU, camera. It's mainly a software problem (levels 1–2), which is why the class used the robot example instead.</p></details>
+<details class="sol"><summary class="q">P2. A chatbot fools 6 of 10 judges in a text chat. Has it passed the Total Turing test?</summary>
+<p>No. It passed (at best) the ordinary Turing test. The total version needs perception (e.g. seeing objects) and actuation (acting in the world), and the result also depends on who the judges were.</p></details>
+<details class="sol"><summary class="q">P3. Which direction is design and which is validation?</summary>
+<p>Design is top-down: level 1 → 2 → 3. Validation is bottom-up: 3 → 2 → 1 (the wings confirm the flapping, and the flapping explains the flight).</p></details>

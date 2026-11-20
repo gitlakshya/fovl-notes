@@ -1,0 +1,200 @@
+<div class="tldr"><h3>In 30 seconds</h3><ul>
+<li>An <b>RNN</b> reads one word per <b>time step</b> and keeps a running memory, the <b>hidden state</b> h<sub>t</sub>, that mixes the new word with everything read so far.</li>
+<li>The <b>same weights</b> are reused at every step, so it handles <b>any length</b> and the model size doesn't grow with input length.</li>
+<li>Train with <b>cross-entropy at every step</b> and sum the losses. <b>Teacher forcing</b> feeds the gold words during training; at test time the model feeds its own outputs back in (<b>autoregressive</b> generation).</li>
+<li>Uses: language modelling, <b>sequence labelling</b> (POS, NER with <b>BIO</b> tags), <b>sequence classification</b> (sentiment), <b>encoder–decoder</b> (translation).</li>
+<li>Problems: <b>vanishing/exploding gradients</b> and no parallelism. Fixes: ReLU, careful initialisation, residual connections, <b>gradient clipping</b>, and <b>LSTM/GRU</b> gates.</li>
+</ul></div>
+<h2>What each idea is for</h2>
+<div class="tbl-wrap"><table class="uses">
+<tr><th>Concept</th><th>What it's for</th><th>Where it's used</th></tr>
+<tr><td>RNN hidden state</td><td>A running memory of the sequence so far</td><td>Language modelling, tagging, time series</td></tr>
+<tr><td>Shared weights</td><td>Handles any length with a fixed model size</td><td>All sequence models</td></tr>
+<tr><td>Per-step cross-entropy</td><td>Trains the prediction at every position</td><td>LM and tagger training</td></tr>
+<tr><td>Teacher forcing</td><td>Stable, fast training using gold inputs</td><td>Seq2seq and LM training</td></tr>
+<tr><td>Autoregressive generation</td><td>Produces text by feeding outputs back in</td><td>Chatbots, translation decoding</td></tr>
+<tr><td>Sequence labelling / BIO</td><td>Labels every word, including multi-word entities</td><td>NER, POS tagging, slot filling in assistants</td></tr>
+<tr><td>Sequence classification</td><td>One label for a whole text</td><td>Sentiment, spam, intent detection</td></tr>
+<tr><td>Bidirectional RNN</td><td>Uses both left and right context</td><td>Tagging and classification (not generation)</td></tr>
+<tr><td>Perplexity = exp(loss)</td><td>Reports LM quality</td><td>Model comparison</td></tr>
+<tr><td>Gradient clipping</td><td>Prevents exploding updates</td><td>Training RNNs and transformers</td></tr>
+<tr><td>LSTM / GRU gates</td><td>Remember long-range information, reduce vanishing gradients</td><td>Speech, time series, pre-transformer NLP</td></tr>
+</table></div>
+
+
+<h2>The core idea: reuse one small network at every word</h2>
+<div class="box an"><span class="lbl">Analogy: reading with a running summary</span>
+<p>When you read a novel, you don't reread every earlier page for each new word. You keep a <b>mental summary</b> and update it as you go. The RNN's hidden state is that running summary, and it uses the same "update rule" (the same weights) on every page.</p></div>
+
+<figure class="diagram">
+<svg viewBox="0 0 620 220" xmlns="http://www.w3.org/2000/svg" font-family="Inter,sans-serif" font-size="13" fill="currentColor">
+<defs><marker id="r1" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#3d5afe"/></marker></defs>
+<g text-anchor="middle">
+<text x="60" y="110">h⁽⁰⁾</text>
+<text x="170" y="205">the</text><text x="290" y="205">students</text><text x="410" y="205">opened</text><text x="530" y="205">their</text>
+<text x="530" y="20" fill="#b4235a">ŷ⁽⁴⁾ → books? laptops?</text>
+</g>
+<g fill="none" stroke="#3d5afe" stroke-width="2">
+<rect x="140" y="85" width="60" height="40" rx="8"/><rect x="260" y="85" width="60" height="40" rx="8"/><rect x="380" y="85" width="60" height="40" rx="8"/><rect x="500" y="85" width="60" height="40" rx="8"/>
+<path d="M80 105 H138" marker-end="url(#r1)"/><path d="M200 105 H258" marker-end="url(#r1)"/><path d="M320 105 H378" marker-end="url(#r1)"/><path d="M440 105 H498" marker-end="url(#r1)"/>
+<path d="M170 190 V127" marker-end="url(#r1)"/><path d="M290 190 V127" marker-end="url(#r1)"/><path d="M410 190 V127" marker-end="url(#r1)"/><path d="M530 190 V127" marker-end="url(#r1)"/>
+<path d="M530 85 V30" marker-end="url(#r1)" stroke="#b4235a"/>
+</g>
+<g text-anchor="middle" font-size="12"><text x="170" y="110">h⁽¹⁾</text><text x="290" y="110">h⁽²⁾</text><text x="410" y="110">h⁽³⁾</text><text x="530" y="110">h⁽⁴⁾</text>
+<text x="230" y="98">W<tspan font-size="9">h</tspan></text><text x="350" y="98">W<tspan font-size="9">h</tspan></text><text x="470" y="98">W<tspan font-size="9">h</tspan></text>
+<text x="188" y="160">W<tspan font-size="9">e</tspan></text><text x="308" y="160">W<tspan font-size="9">e</tspan></text><text x="428" y="160">W<tspan font-size="9">e</tspan></text><text x="548" y="160">W<tspan font-size="9">e</tspan></text></g>
+</svg><figcaption>The same W<sub>h</sub> and W<sub>e</sub> are used at every time step.</figcaption></figure>
+
+<!--viz:rnn-unrolled-->
+<figure class="diagram viz" id="fig-rnn-unrolled"><svg class="vz" viewBox="0 0 800 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="An RNN unrolled over time. The SAME weights Wₑ (input), Wₕ (recurrent) and U (output) are reused at every step, so the parameter count does not grow with sentence length. hₜ = tanh(Wₕhₜ₋₁ + Wₑxₜ + b)." style="max-width:800px" font-family="Inter,system-ui,sans-serif" font-size="13"><rect x="60.0" y="175.0" width="90.0" height="32.0" rx="10" class="bx"/><text x="105.0" y="195.0" text-anchor="middle" class="" font-size="12" font-weight="600">the</text><line x1="105.0" y1="175.0" x2="105.0" y2="140.0" class="ar" stroke-width="1.8"/><polygon points="105.0,140.0 108.1,147.4 101.9,147.4" class="arf"/><text x="122.0" y="162.0" text-anchor="start" class="mut" font-size="11">Wₑ</text><rect x="65.0" y="95.0" width="80.0" height="44.0" rx="10" class="bx1"/><text x="105.0" y="121.0" text-anchor="middle" class="" font-size="13" font-weight="600">h1</text><line x1="105.0" y1="95.0" x2="105.0" y2="60.0" class="ar" stroke-width="1.8"/><polygon points="105.0,60.0 108.1,67.4 101.9,67.4" class="arf"/><text x="122.0" y="82.0" text-anchor="start" class="mut" font-size="11">U</text><rect x="70.0" y="22.0" width="70.0" height="36.0" rx="10" class="bx"/><text x="105.0" y="44.0" text-anchor="middle" class="" font-size="12" font-weight="600">ŷ1</text><line x1="147.0" y1="117.0" x2="238.0" y2="117.0" class="arb" stroke-width="2.2"/><polygon points="238.0,117.0 230.6,120.1 230.6,113.9" class="arbf"/><text x="192.0" y="110.0" text-anchor="middle" class="acc" font-size="11" font-weight="700">Wₕ</text><rect x="235.0" y="175.0" width="90.0" height="32.0" rx="10" class="bx"/><text x="280.0" y="195.0" text-anchor="middle" class="" font-size="12" font-weight="600">students</text><line x1="280.0" y1="175.0" x2="280.0" y2="140.0" class="ar" stroke-width="1.8"/><polygon points="280.0,140.0 283.1,147.4 276.9,147.4" class="arf"/><text x="297.0" y="162.0" text-anchor="start" class="mut" font-size="11">Wₑ</text><rect x="240.0" y="95.0" width="80.0" height="44.0" rx="10" class="bx1"/><text x="280.0" y="121.0" text-anchor="middle" class="" font-size="13" font-weight="600">h2</text><line x1="280.0" y1="95.0" x2="280.0" y2="60.0" class="ar" stroke-width="1.8"/><polygon points="280.0,60.0 283.1,67.4 276.9,67.4" class="arf"/><text x="297.0" y="82.0" text-anchor="start" class="mut" font-size="11">U</text><rect x="245.0" y="22.0" width="70.0" height="36.0" rx="10" class="bx"/><text x="280.0" y="44.0" text-anchor="middle" class="" font-size="12" font-weight="600">ŷ2</text><line x1="322.0" y1="117.0" x2="413.0" y2="117.0" class="arb" stroke-width="2.2"/><polygon points="413.0,117.0 405.6,120.1 405.6,113.9" class="arbf"/><text x="367.0" y="110.0" text-anchor="middle" class="acc" font-size="11" font-weight="700">Wₕ</text><rect x="410.0" y="175.0" width="90.0" height="32.0" rx="10" class="bx"/><text x="455.0" y="195.0" text-anchor="middle" class="" font-size="12" font-weight="600">opened</text><line x1="455.0" y1="175.0" x2="455.0" y2="140.0" class="ar" stroke-width="1.8"/><polygon points="455.0,140.0 458.1,147.4 451.9,147.4" class="arf"/><text x="472.0" y="162.0" text-anchor="start" class="mut" font-size="11">Wₑ</text><rect x="415.0" y="95.0" width="80.0" height="44.0" rx="10" class="bx1"/><text x="455.0" y="121.0" text-anchor="middle" class="" font-size="13" font-weight="600">h3</text><line x1="455.0" y1="95.0" x2="455.0" y2="60.0" class="ar" stroke-width="1.8"/><polygon points="455.0,60.0 458.1,67.4 451.9,67.4" class="arf"/><text x="472.0" y="82.0" text-anchor="start" class="mut" font-size="11">U</text><rect x="420.0" y="22.0" width="70.0" height="36.0" rx="10" class="bx"/><text x="455.0" y="44.0" text-anchor="middle" class="" font-size="12" font-weight="600">ŷ3</text><line x1="497.0" y1="117.0" x2="588.0" y2="117.0" class="arb" stroke-width="2.2"/><polygon points="588.0,117.0 580.6,120.1 580.6,113.9" class="arbf"/><text x="542.0" y="110.0" text-anchor="middle" class="acc" font-size="11" font-weight="700">Wₕ</text><rect x="585.0" y="175.0" width="90.0" height="32.0" rx="10" class="bx"/><text x="630.0" y="195.0" text-anchor="middle" class="" font-size="12" font-weight="600">their</text><line x1="630.0" y1="175.0" x2="630.0" y2="140.0" class="ar" stroke-width="1.8"/><polygon points="630.0,140.0 633.1,147.4 626.9,147.4" class="arf"/><text x="647.0" y="162.0" text-anchor="start" class="mut" font-size="11">Wₑ</text><rect x="590.0" y="95.0" width="80.0" height="44.0" rx="10" class="bx1"/><text x="630.0" y="121.0" text-anchor="middle" class="" font-size="13" font-weight="600">h4</text><line x1="630.0" y1="95.0" x2="630.0" y2="60.0" class="ar" stroke-width="1.8"/><polygon points="630.0,60.0 633.1,67.4 626.9,67.4" class="arf"/><text x="647.0" y="82.0" text-anchor="start" class="mut" font-size="11">U</text><rect x="595.0" y="22.0" width="70.0" height="36.0" rx="10" class="bx"/><text x="630.0" y="44.0" text-anchor="middle" class="" font-size="12" font-weight="600">ŷ4</text><rect x="-2.0" y="100.0" width="40.0" height="34.0" rx="10" class="bx"/><text x="18.0" y="121.0" text-anchor="middle" class="" font-size="11" font-weight="600">h0</text><line x1="38.0" y1="117.0" x2="63.0" y2="117.0" class="arb" stroke-width="2.2"/><polygon points="63.0,117.0 55.6,120.1 55.6,113.9" class="arbf"/><text x="770.0" y="117.0" text-anchor="middle" class="" font-size="20">…</text></svg><figcaption>An RNN unrolled over time. The SAME weights Wₑ (input), Wₕ (recurrent) and U (output) are reused at every step, so the parameter count does not grow with sentence length. hₜ = tanh(Wₕhₜ₋₁ + Wₑxₜ + b).</figcaption></figure>
+<!--/viz:rnn-unrolled-->
+<h2>The equations</h2>
+<div class="formula">e<sup>(t)</sup> = E · x<sup>(t)</sup> &nbsp;&nbsp;&nbsp;(word embedding lookup)</div>
+<div class="formula">h<sup>(t)</sup> = σ( W<sub>h</sub> h<sup>(t−1)</sup> + W<sub>e</sub> e<sup>(t)</sup> + b₁ ) &nbsp;&nbsp;&nbsp;(new memory = old memory + new word)</div>
+<div class="formula">ŷ<sup>(t)</sup> = softmax( U h<sup>(t)</sup> + b₂ ) ∈ ℝ<sup>|V|</sup> &nbsp;&nbsp;&nbsp;(probability of each next word)</div>
+<p>You'll also see the names <b>W<sub>xh</sub></b> (input → hidden, = W<sub>e</sub>), <b>W<sub>hh</sub></b> (hidden → hidden, = W<sub>h</sub>) and <b>W<sub>hy</sub></b> (hidden → output, = U). σ is often tanh.</p>
+<div class="box ex"><span class="lbl">Unrolling the first two steps</span>
+<p>h<sup>(0)</sup> is an initial state (random or zeros).<br>
+t = 1: h<sup>(1)</sup> = σ(W<sub>h</sub> h<sup>(0)</sup> + W<sub>e</sub> e<sup>(1)</sup> + b₁)<br>
+t = 2: h<sup>(2)</sup> = σ(W<sub>h</sub> <b>h<sup>(1)</sup></b> + W<sub>e</sub> e<sup>(2)</sup> + b₁). This contains h<sup>(1)</sup>, which already contains word 1.<br>
+At t = 4, ŷ<sup>(4)</sup> = P(x<sup>(5)</sup> | the students opened their).</p></div>
+
+<div class="two">
+<div class="card"><h4>✔ Advantages</h4><ul><li>Processes <b>any input length</b> (just add time steps)</li><li>Step t can use information from many steps back</li><li>Model size doesn't grow with input length</li><li>Same weights at every step, so inputs are treated symmetrically</li></ul></div>
+<div class="card"><h4>✘ Disadvantages</h4><ul><li>Computation is <b>slow and sequential</b>: step t must wait for step t−1</li><li>In practice it's hard to use information from many steps back (vanishing gradients)</li></ul></div>
+</div>
+
+<h2>Counting parameters (a favourite exam question)</h2>
+<div class="box ex"><span class="lbl">Worked example 1 (slide exercise)</span>
+<p>RNN language model, vocabulary {I, he, go, walk, eat} (one-hot size 5), hidden size 6, no biases. How many trainable weights?</p>
+<div class="formula">W<sub>xh</sub>: 5 × 6 = 30 &nbsp;&nbsp; W<sub>hh</sub>: 6 × 6 = 36 &nbsp;&nbsp; W<sub>hy</sub>: 6 × 5 = 30 &nbsp;&nbsp; total = <b>96</b></div>
+<p>A language model predicts the next word over the 5-word vocabulary, so the output layer counts. (Only the recurrence: 66.)</p></div>
+<div class="box ex"><span class="lbl">Worked example 2: an NER tagger</span>
+<p>300-dimensional embeddings, hidden size 50, <b>5 entity types</b> tagged with BIO.</p>
+<div class="formula">W<sub>xh</sub>: 300 × 50 = 15,000 &nbsp;&nbsp; W<sub>hh</sub>: 50 × 50 = 2,500</div>
+<p>Output labels: B- and I- for each of the 5 types, plus O = <b>2n + 1 = 11</b>. So W<sub>hy</sub>: 50 × 11 = 550, total <b>18,050</b>. (With 50 POS tags instead: 15,000 + 2,500 + 2,500 = 20,000.)</p></div>
+<p>Rule of thumb: write out every weight matrix in the equations, give it a shape (rows × columns) that makes the multiplication work, multiply, and add.</p>
+
+<h2>Training an RNN language model</h2>
+<p>At each step, compare the predicted distribution ŷ<sup>(t)</sup> with the actual next word using <b>cross-entropy</b>:</p>
+<div class="formula">J<sup>(t)</sup> = − log ŷ<sup>(t)</sup>[ x<sup>(t+1)</sup> ] &nbsp;&nbsp;&nbsp; J = (1/T) Σ<sub>t</sub> J<sup>(t)</sup></div>
+<div class="box ex"><span class="lbl">Example</span><p>Input "the students opened their exams…": J<sup>(1)</sup> = −log P(students), J<sup>(2)</sup> = −log P(opened), J<sup>(3)</sup> = −log P(their), J<sup>(4)</sup> = −log P(exams). Add them up (this is also called the <b>negative log-likelihood</b>).</p></div>
+<h3>Teacher forcing vs inference</h3>
+<div class="two">
+<div class="card"><h4>Teacher forcing (training)</h4><p>At each step feed the <b>gold</b> previous word, even if the model predicted something else. If it said "home" instead of "students", we still feed "students" next. Otherwise one early mistake snowballs. The downside: the model may learn to reproduce training sentences too rigidly.</p></div>
+<div class="card"><h4>Inference (testing / generation)</h4><p>Feed the model's <b>own</b> previous prediction back in. A mix of the two during training is also possible.</p></div>
+</div>
+<p>Computing the loss over a whole corpus at once is too expensive, so we use <b>stochastic gradient descent on mini-batches</b>.</p>
+
+<h3>Generating text (autoregressive generation)</h3>
+<ol class="steps"><li>Start with a special start token &lt;s&gt;.</li><li>Run forward, get a distribution, <b>sample</b> a word.</li><li>Feed that word in as the next input.</li><li>Repeat until &lt;/s&gt; (end token) or a maximum length.</li></ol>
+<div class="flow"><span>&lt;s&gt;</span><b>→</b><span>So</span><b>→</b><span>long</span><b>→</b><span>and</span><b>→</b><span>thanks</span><b>→</b><span>for</span><b>→</b><span>…</span><b>→</b><span>&lt;/s&gt;</span></div>
+
+<h2>Four ways to use an RNN</h2>
+<div class="tbl-wrap"><table>
+<tr><th>Pattern</th><th>Input → output</th><th>Examples</th></tr>
+<tr><td><b>Sequence labelling</b></td><td>one label per word</td><td>POS tagging, NER</td></tr>
+<tr><td><b>Sequence classification</b></td><td>one label per sentence (from the last hidden state)</td><td>sentiment, spam detection</td></tr>
+<tr><td><b>Language modelling</b></td><td>next word at every step</td><td>autocomplete, generation</td></tr>
+<tr><td><b>Encoder–decoder</b></td><td>sequence → context vector → new sequence</td><td>translation, dialogue, summarisation (topic 15)</td></tr>
+</table></div>
+
+<h3>Sequence labelling: POS and NER</h3>
+<p>Same machinery, different gold outputs. Instead of predicting "students opened…", the target at each step is a tag:</p>
+<div class="formula">Janet/NNP &nbsp; will/MD &nbsp; back/VB &nbsp; the/DT &nbsp; bill/NN</div>
+<p>The tag for "bill" uses everything read before it through the hidden state.</p>
+<div class="box ex"><span class="lbl">NER with BIO tags</span>
+<p>Entity types: PER (person), ORG, LOC, GPE, TIME, MONEY… Multi-word names need to know where an entity starts:</p>
+<div class="tbl-wrap"><table>
+<tr><th>Jane</th><th>Villanueva</th><th>of</th><th>United</th><th>Airlines</th><th>Holding</th><th>discussed</th><th>the</th><th>Chicago</th><th>route</th></tr>
+<tr><td>B-PER</td><td>I-PER</td><td>O</td><td>B-ORG</td><td>I-ORG</td><td>I-ORG</td><td>O</td><td>O</td><td>B-LOC</td><td>O</td></tr>
+</table></div>
+<p>With n entity types the tag set has <b>2n + 1</b> labels. BIO turns span-finding into ordinary per-word labelling.</p></div>
+
+<h3>Bidirectional RNNs</h3>
+<p>For classification the <b>whole sentence is available</b>, so why only read left to right? Run one RNN forward and another backward, and <b>concatenate</b> their hidden states at each word.</p>
+<div class="box ex"><span class="lbl">Example: "The movie was <b>terribly</b> exciting!"</span><p>Reading left to right, "terribly" looks negative. The backward RNN has already seen "exciting!", so the combined representation knows "terribly" here means "very". (A 300-d forward state + a 300-d backward state = a 600-d representation.)</p></div>
+
+<h2>Evaluating LMs: perplexity again</h2>
+<div class="formula">perplexity = Π<sub>t</sub> ( 1 / P<sub>LM</sub>(x<sup>(t+1)</sup> | x<sup>(1..t)</sup>) )<sup>1/T</sup> = exp( J(θ) )<small>the exponential of the cross-entropy loss. Lower is better.</small></div>
+<p>Perplexity 1.44 means the model is choosing among about 1.44 words on average (confident). 4.07 means it's more confused.</p>
+
+<h2>Vanishing and exploding gradients</h2>
+<p>Back-propagation through time multiplies many derivatives together, one per step (chain rule through h<sup>(t)</sup> → h<sup>(t−1)</sup> → … → h<sup>(1)</sup>):</p>
+<div class="formula">∂J/∂h<sup>(1)</sup> = ∂J/∂h<sup>(T)</sup> × ∂h<sup>(T)</sup>/∂h<sup>(T−1)</sup> × … × ∂h<sup>(2)</sup>/∂h<sup>(1)</sup></div>
+<div class="box ex"><span class="lbl">Example</span>
+<p>If every factor is about 0.5: 0.5¹⁰ ≈ <b>0.001</b>, so the gradient <b>vanishes</b> and early words barely learn (the model "forgets" long-range context).<br>If every factor is about 2.5: 2.5¹⁰ ≈ <b>9,500</b>, so the gradient <b>explodes</b> and training jumps wildly.</p></div>
+<div class="tbl-wrap"><table>
+<tr><th>Fix</th><th>How it helps</th></tr>
+<tr><td>ReLU activations</td><td>Gradient is 1 for positive inputs, so products don't shrink as much</td></tr>
+<tr><td>Good weight initialisation</td><td>Start where gradients are well-behaved</td></tr>
+<tr><td>Residual connections</td><td>Pass the input forward unchanged as well, so information isn't lost if a layer changes little</td></tr>
+<tr><td><b>Gradient clipping</b> (for exploding gradients)</td><td>If the gradient is too big, scale it down: g ← g · min(1, threshold / ‖g‖)</td></tr>
+<tr><td><b>LSTM / GRU</b></td><td>Gates control what to remember and what to forget</td></tr>
+</table></div>
+
+<!--viz:vanish-->
+<figure class="diagram viz" id="fig-vanish"><svg class="vz" viewBox="0 0 540 285" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Backpropagating through k steps multiplies k similar factors. Below 1 the gradient vanishes (distant words stop influencing learning); above 1 it explodes (fixed by gradient clipping). LSTMs and GRUs fix the vanishing case with gates." style="max-width:540px" font-family="Inter,system-ui,sans-serif" font-size="13"><line x1="70.0" y1="240.0" x2="510.0" y2="240.0" class="grid" stroke-width="1"/><text x="64.0" y="244.0" text-anchor="end" class="mut" font-size="11">10⁻⁶</text><line x1="70.0" y1="196.0" x2="510.0" y2="196.0" class="grid" stroke-width="1"/><text x="64.0" y="200.0" text-anchor="end" class="mut" font-size="11">10⁻⁴</text><line x1="70.0" y1="152.0" x2="510.0" y2="152.0" class="grid" stroke-width="1"/><text x="64.0" y="156.0" text-anchor="end" class="mut" font-size="11">0.01</text><line x1="70.0" y1="108.0" x2="510.0" y2="108.0" class="grid" stroke-width="1"/><text x="64.0" y="112.0" text-anchor="end" class="mut" font-size="11">1</text><line x1="70.0" y1="64.0" x2="510.0" y2="64.0" class="grid" stroke-width="1"/><text x="64.0" y="68.0" text-anchor="end" class="mut" font-size="11">100</text><line x1="70.0" y1="20.0" x2="510.0" y2="20.0" class="grid" stroke-width="1"/><text x="64.0" y="24.0" text-anchor="end" class="mut" font-size="11">10⁴</text><line x1="70.0" y1="240.0" x2="70.0" y2="244.0" class="ax" stroke-width="1"/><text x="70.0" y="257.0" text-anchor="middle" class="mut" font-size="11">0</text><line x1="180.0" y1="240.0" x2="180.0" y2="244.0" class="ax" stroke-width="1"/><text x="180.0" y="257.0" text-anchor="middle" class="mut" font-size="11">5</text><line x1="290.0" y1="240.0" x2="290.0" y2="244.0" class="ax" stroke-width="1"/><text x="290.0" y="257.0" text-anchor="middle" class="mut" font-size="11">10</text><line x1="400.0" y1="240.0" x2="400.0" y2="244.0" class="ax" stroke-width="1"/><text x="400.0" y="257.0" text-anchor="middle" class="mut" font-size="11">15</text><line x1="510.0" y1="240.0" x2="510.0" y2="244.0" class="ax" stroke-width="1"/><text x="510.0" y="257.0" text-anchor="middle" class="mut" font-size="11">20</text><line x1="70.0" y1="240.0" x2="510.0" y2="240.0" class="ax" stroke-width="1.2"/><line x1="70.0" y1="20.0" x2="70.0" y2="240.0" class="ax" stroke-width="1.2"/><text x="290.0" y="276.0" text-anchor="middle" class="mut" font-size="12">number of time steps back (k)</text><text x="28.0" y="130.0" text-anchor="middle" class="mut" font-size="12" transform="rotate(-90 28 130.0)">gradient factor (log scale)</text><path d="M70.0,108.0 L92.0,114.6 L114.0,121.2 L136.0,127.9 L158.0,134.5 L180.0,141.1 L202.0,147.7 L224.0,154.4 L246.0,161.0 L268.0,167.6 L290.0,174.2 L312.0,180.8 L334.0,187.5 L356.0,194.1 L378.0,200.7 L400.0,207.3 L422.0,214.0 L444.0,220.6 L466.0,227.2 L488.0,233.8 L510.0,240.5" class="ln1" stroke-width="3" fill="none"/><path d="M70.0,108.0 L92.0,104.1 L114.0,100.3 L136.0,96.4 L158.0,92.5 L180.0,88.6 L202.0,84.8 L224.0,80.9 L246.0,77.0 L268.0,73.1 L290.0,69.3 L312.0,65.4 L334.0,61.5 L356.0,57.6 L378.0,53.8 L400.0,49.9 L422.0,46.0 L444.0,42.1 L466.0,38.3 L488.0,34.4 L510.0,30.5" class="ln2" stroke-width="3" fill="none"/><line x1="70.0" y1="108.0" x2="510.0" y2="108.0" class="res" stroke-width="1" stroke-dasharray="4 4"/><circle cx="290.0" cy="174.2" r="5" class="c1"/><text x="282.0" y="194.2" text-anchor="end" class="" font-size="11" font-weight="700">0.5¹⁰ ≈ 0.00098</text><text x="378.0" y="43.8" text-anchor="middle" class="ac2" font-size="11" font-weight="700">1.5ᵏ explodes</text><text x="422.0" y="202.0" text-anchor="middle" class="acc" font-size="11" font-weight="700">0.5ᵏ vanishes</text></svg><figcaption>Backpropagating through k steps multiplies k similar factors. Below 1 the gradient vanishes (distant words stop influencing learning); above 1 it explodes (fixed by gradient clipping). LSTMs and GRUs fix the vanishing case with gates.</figcaption></figure>
+<!--/viz:vanish-->
+<h2>LSTM and GRU: RNNs with gates</h2>
+<div class="box an"><span class="lbl">Analogy: a notebook with three rules</span><p>An LSTM keeps a notebook (the <b>cell state</b> c<sub>t</sub>). Each step it decides (1) <b>what to erase</b> (forget gate), (2) <b>what new notes to write</b> (input gate), and (3) <b>what to read out loud</b> right now (output gate). A sigmoid gate outputs values between 0 and 1: near 1 means "let it through", near 0 means "block it".</p></div>
+<div class="formula">f<sub>t</sub> = σ(W<sub>f</sub>[h<sub>t−1</sub>, x<sub>t</sub>] + b<sub>f</sub>) &nbsp; i<sub>t</sub> = σ(W<sub>i</sub>[h<sub>t−1</sub>, x<sub>t</sub>] + b<sub>i</sub>) &nbsp; o<sub>t</sub> = σ(W<sub>o</sub>[h<sub>t−1</sub>, x<sub>t</sub>] + b<sub>o</sub>)</div>
+<div class="formula">c̃<sub>t</sub> = tanh(W<sub>c</sub>[h<sub>t−1</sub>, x<sub>t</sub>] + b<sub>c</sub>) &nbsp;&nbsp; c<sub>t</sub> = f<sub>t</sub> ⊙ c<sub>t−1</sub> + i<sub>t</sub> ⊙ c̃<sub>t</sub> &nbsp;&nbsp; h<sub>t</sub> = o<sub>t</sub> ⊙ tanh(c<sub>t</sub>)<small>⊙ = element-wise multiplication</small></div>
+<p>Example: when predicting x<sub>9</sub>, the information from x<sub>2</sub> may no longer matter, and the forget gate learns to drop it. A <b>GRU</b> is a lighter version with two gates (<b>reset</b> and <b>update</b>). In the simple RNN a single line passes through tanh; the LSTM splits that same information into separate gated paths. (LSTMs were only covered briefly and won't be examined in detail.)</p>
+
+<div class="box exam"><span class="lbl">Exam tip (from the instructor)</span>
+<p><b>RNNs are important.</b> Be able to write the equations, count parameters, explain teacher forcing vs inference, BIO tagging (2n + 1 labels), bidirectional RNNs, perplexity = exp(loss), and why gradients vanish or explode (plus clipping).</p></div>
+<div class="box try"><span class="lbl">Try it</span>
+<p>An RNN has 100-d embeddings, hidden size 64, and predicts one of 3 sentiment classes from the final hidden state. Count W<sub>xh</sub>, W<sub>hh</sub>, W<sub>hy</sub>. (Answer: 6,400 + 4,096 + 192 = 10,688 weights, plus biases.)</p></div>
+<!--viz:lstm-->
+<figure class="diagram viz" id="fig-lstm"><svg class="vz" viewBox="0 0 900 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="An LSTM cell. The cell state is a &quot;conveyor belt&quot;: information flows along it with only element-wise × and +, so gradients survive many steps. Each gate is a sigmoid between 0 (block) and 1 (pass). A GRU merges these into two gates (update, reset)." style="max-width:900px" font-family="Inter,system-ui,sans-serif" font-size="13"><rect x="150.0" y="40.0" width="520.0" height="170.0" rx="16" class="bx"/><line x1="130.0" y1="70.0" x2="700.0" y2="70.0" class="ln1c" stroke-width="4"/><text x="705.0" y="74.0" text-anchor="start" class="acc" font-size="12" font-weight="700">cₜ (cell: long-term memory)</text><text x="60.0" y="74.0" text-anchor="start" class="acc" font-size="12" font-weight="700">cₜ₋₁</text><rect x="180.0" y="120.0" width="100.0" height="50.0" rx="10" class="bx1"/><text x="230.0" y="141.0" text-anchor="middle" class="" font-size="12" font-weight="600">forget</text><text x="230.0" y="157.0" text-anchor="middle" class="" font-size="12" font-weight="600">gate f</text><text x="230.0" y="190.0" text-anchor="middle" class="mut" font-size="10.5">how much old memory to keep</text><line x1="230.0" y1="120.0" x2="230.0" y2="76.0" class="ar" stroke-width="1.6"/><polygon points="230.0,76.0 233.1,83.4 226.9,83.4" class="arf"/><rect x="330.0" y="120.0" width="100.0" height="50.0" rx="10" class="bx1"/><text x="380.0" y="141.0" text-anchor="middle" class="" font-size="12" font-weight="600">input</text><text x="380.0" y="157.0" text-anchor="middle" class="" font-size="12" font-weight="600">gate i</text><text x="380.0" y="190.0" text-anchor="middle" class="mut" font-size="10.5">how much new info to write</text><line x1="380.0" y1="120.0" x2="380.0" y2="76.0" class="ar" stroke-width="1.6"/><polygon points="380.0,76.0 383.1,83.4 376.9,83.4" class="arf"/><rect x="480.0" y="120.0" width="100.0" height="50.0" rx="10" class="bx1"/><text x="530.0" y="141.0" text-anchor="middle" class="" font-size="12" font-weight="600">output</text><text x="530.0" y="157.0" text-anchor="middle" class="" font-size="12" font-weight="600">gate o</text><text x="530.0" y="190.0" text-anchor="middle" class="mut" font-size="10.5">how much memory to show</text><line x1="530.0" y1="120.0" x2="530.0" y2="76.0" class="ar" stroke-width="1.6"/><polygon points="530.0,76.0 533.1,83.4 526.9,83.4" class="arf"/><text x="240.0" y="100.0" text-anchor="start" class="" font-size="12" font-weight="700">× f</text><text x="390.0" y="100.0" text-anchor="start" class="" font-size="12" font-weight="700">+ i·c̃</text><text x="540.0" y="100.0" text-anchor="start" class="" font-size="12" font-weight="700">hₜ = o · tanh(cₜ)</text><line x1="130.0" y1="230.0" x2="700.0" y2="230.0" class="ln3c" stroke-width="3"/><text x="705.0" y="234.0" text-anchor="start" class="ex" font-size="12" font-weight="700">hₜ (hidden state)</text><text x="60.0" y="234.0" text-anchor="start" class="ex" font-size="12" font-weight="700">hₜ₋₁, xₜ</text></svg><figcaption>An LSTM cell. The cell state is a "conveyor belt": information flows along it with only element-wise × and +, so gradients survive many steps. Each gate is a sigmoid between 0 (block) and 1 (pass). A GRU merges these into two gates (update, reset).</figcaption></figure>
+<!--/viz:lstm-->
+<h2>From the lecture slides</h2>
+<ul>
+<li><b>Named entities</b> (anything referred to by a proper name). The 4 most common tags: <b>PER</b> ("Marie Curie"), <b>LOC</b> ("New York City"), <b>ORG</b> ("Stanford University"), <b>GPE</b> geo-political entity ("Boulder, Colorado"). The term is also extended to dates, times and prices.</li>
+<li><b>Why NER?</b> Sentiment toward a company or person, QA about an entity, information extraction. <b>Why it's hard:</b> (1) <i>segmentation</i> (find the span; POS tagging has none), (2) <i>type ambiguity</i> (is "Washington" a person, place or organisation?).</li>
+<li><b>BIO tag count:</b> 1 O tag + n B tags + n I tags = <b>2n + 1</b>.</li>
+<li><b>Cross-entropy properties (slide):</b> converts multiplication into addition, strongly penalises confident wrong predictions, gives stable gradients, works well with softmax. Binary version: <b>BCE = −[y log ŷ + (1 − y) log(1 − ŷ)]</b>.</li>
+<li><b>SGD for RNN-LMs:</b> computing loss over the whole corpus is too expensive, so treat x⁽¹⁾…x⁽ᵀ⁾ as a sentence or document and update per batch of sentences.</li>
+<li><b>Vanishing gradient formula:</b> ∂L/∂h₁ = (∂L/∂h<sub>n</sub>) Π<sub>l=1..n−1</sub> ∂h<sub>l+1</sub>/∂h<sub>l</sub>. Solutions: ReLU, suitable initialisation, residual connections, LSTM/GRU. Solution 2: more direct, linear pass-through connections (attention, residuals).</li>
+<li><b>LSTM vs RNN:</b> if the forget gate says "remember everything", the cell barely changes, so information survives many steps. A plain RNN has to learn weights that preserve information on its own, which is very hard.</li>
+</ul>
+<div class="box key"><span class="lbl">GRU equations (slide)</span>
+<div class="formula">z<sub>t</sub> = σ(W<sub>z</sub>x<sub>t</sub> + U<sub>z</sub>h<sub>t−1</sub> + b<sub>z</sub>) &nbsp;(update gate) &nbsp;&nbsp; r<sub>t</sub> = σ(W<sub>r</sub>x<sub>t</sub> + U<sub>r</sub>h<sub>t−1</sub> + b<sub>r</sub>) &nbsp;(reset gate)</div>
+<div class="formula">h̃<sub>t</sub> = tanh(W<sub>h</sub>x<sub>t</sub> + U<sub>h</sub>(r<sub>t</sub> ⊙ h<sub>t−1</sub>) + b<sub>h</sub>) &nbsp;&nbsp; h<sub>t</sub> = (1 − z<sub>t</sub>) ⊙ h<sub>t−1</sub> + z<sub>t</sub> ⊙ h̃<sub>t</sub></div>
+<p>Reset gate: how much past to forget (useful when the current input matters more). Update gate: how much new information replaces old memory.</p></div>
+<h2 id="numericals">Numericals</h2>
+<h3 class="numh"><span class="tag-class">From class</span> Exact slide exercises</h3>
+<div class="box ex"><span class="lbl">C1. RNN-LM parameters (slide exercise)</span>
+<p>Vocabulary {I, he, go, walk, eat} (one-hot size 5), hidden 6, no biases.<br>
+W<sub>xh</sub> = 5 × 6 = 30 · W<sub>hh</sub> = 6 × 6 = 36 · W<sub>hy</sub> = 6 × 5 = 30 → <b>Total = 96</b>.<br>
+<i>(In the lecture the first answer given was 66 = 30 + 36. The output layer is needed because the LM predicts over the 5-word vocabulary.)</i></p></div>
+<div class="box ex"><span class="lbl">C2. Sequence labelling: POS (slide)</span>
+<p>300-d embeddings, 50-d hidden, 50 POS tags: 300×50 + 50×50 + 50×50 = 15,000 + 2,500 + 2,500 = <b>20,000</b>.</p></div>
+<div class="box ex"><span class="lbl">C3. Sequence labelling: NER with BIO (slide)</span>
+<p>5 NER types → 2×5 + 1 = <b>11</b> labels. 300×50 + 50×50 + 50×11 = 15,000 + 2,500 + 550 = <b>18,050</b>.</p></div>
+<div class="box ex"><span class="lbl">C4. Cross-entropy (slide)</span>
+<p>Gold [0, 1, 0, 0], predicted [0.1, 0.6, 0.2, 0.1]: −(0·log 0.1 + 1·log 0.6 + 0·log 0.2 + 0·log 0.1) = −log 0.6 ≈ <b>0.51</b>.<br>
+Predicted [0.4, 0.3, 0.05, 0.25] where the true word got only 0.05: −log 0.05 ≈ <b>2.99</b>. Confidently wrong predictions are punished hard.</p></div>
+<div class="box ex"><span class="lbl">C5. Vanishing gradient (slide)</span>
+<p>Each layer contributes 0.5: (0.5)¹⁰ ≈ <b>0.00098</b>.</p></div>
+<div class="box ex"><span class="lbl">C6. Perplexity interpretation (slide)</span>
+<p>1.44 means choosing among about 1.44 words (confident). 4.07 means "model confused, almost guessing among 4 words". Perplexity = exp(J(θ)).</p></div>
+
+<h3 class="numh"><span class="tag-prac">Practice</span> Same level</h3>
+<details class="sol"><summary class="q">P1. RNN-LM with vocabulary 8 (one-hot), hidden 10, no biases. Parameters?</summary>
+<p>8×10 + 10×10 + 10×8 = 80 + 100 + 80 = <b>260</b>.</p></details>
+<details class="sol"><summary class="q">P2. POS tagger: 100-d embeddings, 64 hidden, 12 universal tags. Parameters (no bias)?</summary>
+<p>6,400 + 4,096 + 768 = <b>11,264</b>.</p></details>
+<details class="sol"><summary class="q">P3. NER: 200-d embeddings, 100 hidden, 4 entity types (PER, LOC, ORG, GPE) with BIO. Labels and parameters?</summary>
+<p>Labels = 9. 20,000 + 10,000 + 900 = <b>30,900</b>.</p></details>
+<details class="sol"><summary class="q">P4. Gold [0, 0, 1], predictions (a) [0.2, 0.2, 0.6] and (b) [0.7, 0.2, 0.1]. Cross-entropies?</summary>
+<p>(a) −ln 0.6 ≈ <b>0.51</b>. (b) −ln 0.1 ≈ <b>2.30</b>.</p></details>
+<details class="sol"><summary class="q">P5. BCE for y = 1 with ŷ = 0.9, and for y = 0 with ŷ = 0.9.</summary>
+<p>−ln 0.9 ≈ <b>0.105</b>. −ln 0.1 ≈ <b>2.30</b>.</p></details>
+<details class="sol"><summary class="q">P6. Per-layer derivative 0.9 over 20 layers, and 1.1 over 20 layers?</summary>
+<p>0.9²⁰ ≈ <b>0.12</b> (shrinks). 1.1²⁰ ≈ <b>6.7</b> (grows, heading towards exploding).</p></details>
+<details class="sol"><summary class="q">P7. Average losses over a 3-step sequence: 0.693, 1.386, 0.223. Perplexity?</summary>
+<p>J ≈ 0.767, so PP = e<sup>0.767</sup> ≈ <b>2.15</b>.</p></details>
+<details class="sol"><summary class="q">P8. GRU with z<sub>t</sub> = 0.2, h<sub>t−1</sub> = 1.0, h̃<sub>t</sub> = 0.5 (scalars). Compute h<sub>t</sub>.</summary>
+<p>(1 − 0.2)(1.0) + 0.2(0.5) = <b>0.9</b>. A small update gate keeps most of the old memory.</p></details>

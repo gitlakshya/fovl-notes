@@ -1,0 +1,163 @@
+<div class="tldr"><h3>In 30 seconds</h3><ul>
+<li>We rely on others' opinions (which car, which school, which professor), but reviews are many, biased and sometimes <b>fake</b>.</li>
+<li>Sentiment analysis sits under <b>subjectivity analysis</b>: the study of <b>private states</b> (opinions, emotions, beliefs) that can't be objectively verified.</li>
+<li>An attitude has a <b>holder</b>, a <b>target</b>, a <b>type</b> (positive/negative or fine-grained emotions) and the <b>text</b> that carries it.</li>
+<li>Hard parts: <b>negation</b>, <b>sarcasm</b>, subtle wording, sentiment that flips mid-review, and <b>multiple aspects</b>.</li>
+<li><b>Aspect-based sentiment analysis (ABSA):</b> "battery is awesome but camera is poor" → battery = positive, camera = negative. Solved with LSTMs (TD-LSTM, TC-LSTM), attention, and triplet/quad extraction.</li>
+</ul></div>
+<h2>What each idea is for</h2>
+<div class="tbl-wrap"><table class="uses">
+<tr><th>Concept</th><th>What it's for</th><th>Where it's used</th></tr>
+<tr><td>Sentiment analysis</td><td>Turns opinions into measurable signals</td><td>Product reviews, brand monitoring, finance (Twitter mood vs stock market)</td></tr>
+<tr><td>Subjectivity analysis</td><td>Separates opinions from facts</td><td>News analysis, filtering reviews</td></tr>
+<tr><td>Attitude components (holder, target, type, text)</td><td>Says <i>who</i> feels <i>what</i> about <i>which</i> thing</td><td>Opinion mining dashboards</td></tr>
+<tr><td>Fake-review cues</td><td>Decides which opinions to trust</td><td>E-commerce review moderation</td></tr>
+<tr><td>Negation handling (NOT_ trick)</td><td>Stops "not good" from being read as positive</td><td>Feature engineering for classifiers</td></tr>
+<tr><td>Sentiment lexicons</td><td>Fast, training-free polarity scores</td><td>Quick baselines, low-resource languages</td></tr>
+<tr><td>RNN / LSTM classifier</td><td>Learns sentiment from context</td><td>Sentence-level sentiment</td></tr>
+<tr><td>Aspect-based SA (TD-/TC-LSTM, attention)</td><td>Separate sentiment for each feature (battery vs camera)</td><td>Product analytics: what to fix, what to advertise</td></tr>
+<tr><td>Triplet / quad extraction</td><td>Fully structured opinion records</td><td>Fine-grained review analytics</td></tr>
+</table></div>
+
+
+<h2>Why opinions matter (and why they're messy)</h2>
+<p>Before deciding, we gather opinions: <i>Which car should I buy? Which school should I apply to? Whom should I vote for?</i> But once you have hundreds of reviews, how do you actually decide?</p>
+<div class="box ex"><span class="lbl">Example: spotting fake reviews</span>
+<p>A set of glowing reviews for a moving company on Yellow Pages had red flags:</p>
+<ul><li>All posted on the <b>same date</b>.</li><li>Each reviewer had reviewed <b>only one</b> business.</li><li>All rated <b>5 stars</b>.</li><li>Reviewers knew the <b>exact names</b> of employees, which suggests insiders.</li><li>Too many positive mentions.</li></ul>
+<p>Deciding what to trust is part of opinion mining.</p></div>
+<p>Business uses ("business intelligence"): <i>What do consumers think of the iPhone? What do they dislike? What features should we add?</i> Studies even linked <b>Twitter mood</b> (calm vs anxious) to stock-market movements about <b>3 days later</b>: emotions shape decisions, but with a delay.</p>
+
+<h2>Subjectivity analysis</h2>
+<p>Subjectivity is the linguistic expression of someone's opinions, sentiments, emotions and beliefs, i.e. their <b>private states</b>, which aren't open to objective verification. It's an umbrella over closely related, often interchangeable tasks: <b>sentiment analysis, opinion mining, review mining, appraisal extraction</b>. Sources include blogs, editorials, reviews and news.</p>
+
+<h2>Anatomy of an attitude</h2>
+<p>Sentiment analysis = <b>detecting attitudes</b>: "enduring, affectively coloured beliefs, dispositions towards objects or persons" (longlasting, emotion-influenced tendencies to like or dislike).</p>
+<div class="tbl-wrap"><table>
+<tr><th>Component</th><th>Question</th><th>Example</th></tr>
+<tr><td><b>Holder</b> (source)</td><td>Who holds the opinion?</td><td>"<u>Customers</u> hate the service"</td></tr>
+<tr><td><b>Target</b> (aspect)</td><td>What is it about?</td><td>"I love this <u>phone</u>", "The <u>battery</u> is bad"</td></tr>
+<tr><td><b>Type</b></td><td>What feeling?</td><td>Fine-grained: love, hate, like, desire, value… or coarse: positive / negative / neutral</td></tr>
+<tr><td><b>Text</b></td><td>Which span carries it?</td><td>a sentence, a whole review, a tweet</td></tr>
+</table></div>
+<p><b>Difficulty levels:</b> simplest = is this text positive or negative? Harder = rate it 1–5. Advanced = detect the target, the source and complex attitude types.</p>
+
+<h2>Data and its challenges</h2>
+<p>An early benchmark: the <b>polarity</b> dataset of <b>IMDb movie reviews</b> labelled positive or negative ("Snake Eyes is the most aggravating kind of movie: the kind that shows so much potential then becomes unbelievably disappointing" → negative).</p>
+<div class="tbl-wrap"><table>
+<tr><th>Challenge</th><th>Example / note</th></tr>
+<tr><td>Messy text</td><td>HTML/XML tags, Twitter handles, hashtags, phone numbers, emoticons</td></tr>
+<tr><td><b>Negation</b></td><td>"I <b>didn't</b> like this movie" vs "I really like this movie". A classic trick: prefix every word after a negation with NOT_ (didn't NOT_like NOT_this NOT_movie) up to the next punctuation.</td></tr>
+<tr><td>Subtle / no negative words</td><td>Perfume review: "If you are reading this because it is your darling fragrance, please wear it at home exclusively, and tape the windows shut." Negative, with no negative word.</td></tr>
+<tr><td><b>Sarcasm</b></td><td>still an open research problem</td></tr>
+<tr><td>Thwarted expectations / alternating sentiment</td><td>positive… then negative… then positive. The ending often decides.</td></tr>
+<tr><td>Aspect / subject changes</td><td>"The food is <b>very cheap</b>" (positive) vs "The service is <b>very cheap</b>" (negative)</td></tr>
+</table></div>
+<div class="box ex"><span class="lbl">A student's question: "I barely like this movie"</span><p>There's no explicit "not", but the meaning is weakly positive or close to neutral. Cases like this (intensity, hedges) need special data and models. They're exceptions you have to design for explicitly.</p></div>
+
+<h2>Approach 1: sentiment lexicons</h2>
+<p>Lists of words with known polarity: <b>LIWC</b>, <b>Bing Liu's opinion lexicon</b>, <b>SentiWordNet</b>, and lexicons for other languages (Hindi) and domains (movies).</p>
+<div class="two">
+<div class="card"><h4>✔ Pros</h4><p>Fast, need no training data, decent initial accuracy.</p></div>
+<div class="card"><h4>✘ Cons</h4><p>Words have multiple senses, multi-word phrases, domain-specific meanings ("cheap", "unpredictable": good in a thriller, bad in a car).</p></div>
+</div>
+
+<!--viz:sent-scale-->
+<figure class="diagram viz" id="fig-sent-scale"><svg class="vz" viewBox="0 0 800 155" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A sentiment lexicon places words on a polarity scale. Simple and explainable, but it misses sarcasm, domain shifts (&quot;unpredictable plot&quot; is good, &quot;unpredictable steering&quot; is bad) and context." style="max-width:800px" font-family="Inter,system-ui,sans-serif" font-size="13"><defs><linearGradient id="sg" x1="0" x2="1"><stop offset="0" class="stopneg"/><stop offset=".5" class="stopmid"/><stop offset="1" class="stoppos"/></linearGradient></defs><rect x="40" y="70" width="720" height="14" rx="7" fill="url(#sg)"/><line x1="91.4" y1="62.0" x2="91.4" y2="92.0" class="ax" stroke-width="1.5"/><text x="91.4" y="54.0" text-anchor="middle" class="" font-size="13" font-weight="700">terrible</text><text x="91.4" y="110.0" text-anchor="middle" class="mut" font-size="11">-3</text><line x1="194.3" y1="62.0" x2="194.3" y2="92.0" class="ax" stroke-width="1.5"/><text x="194.3" y="54.0" text-anchor="middle" class="" font-size="13" font-weight="700">bad</text><text x="194.3" y="110.0" text-anchor="middle" class="mut" font-size="11">-2</text><line x1="348.6" y1="62.0" x2="348.6" y2="92.0" class="ax" stroke-width="1.5"/><text x="348.6" y="54.0" text-anchor="middle" class="" font-size="13" font-weight="700">meh</text><text x="348.6" y="110.0" text-anchor="middle" class="mut" font-size="11">-0.5</text><line x1="451.4" y1="62.0" x2="451.4" y2="92.0" class="ax" stroke-width="1.5"/><text x="451.4" y="54.0" text-anchor="middle" class="" font-size="13" font-weight="700">okay</text><text x="451.4" y="110.0" text-anchor="middle" class="mut" font-size="11">+0.5</text><line x1="605.7" y1="62.0" x2="605.7" y2="92.0" class="ax" stroke-width="1.5"/><text x="605.7" y="54.0" text-anchor="middle" class="" font-size="13" font-weight="700">good</text><text x="605.7" y="110.0" text-anchor="middle" class="mut" font-size="11">+2</text><line x1="708.6" y1="62.0" x2="708.6" y2="92.0" class="ax" stroke-width="1.5"/><text x="708.6" y="54.0" text-anchor="middle" class="" font-size="13" font-weight="700">excellent</text><text x="708.6" y="110.0" text-anchor="middle" class="mut" font-size="11">+3</text><text x="400.0" y="140.0" text-anchor="middle" class="mut" font-size="11">Lexicon approach: add up word scores; flip on negation (&quot;not good&quot; → −2).</text></svg><figcaption>A sentiment lexicon places words on a polarity scale. Simple and explainable, but it misses sarcasm, domain shifts ("unpredictable plot" is good, "unpredictable steering" is bad) and context.</figcaption></figure>
+<!--/viz:sent-scale-->
+<h2>Approach 2: neural classifiers</h2>
+<p><b>Sentence-level (coarse-grained):</b> run the sentence through an RNN/LSTM, take the <b>last hidden state</b>, pass it through a linear layer and softmax over {positive, negative, neutral}.</p>
+<div class="flow"><span>The</span><span>zoom</span><span>and</span><span>display</span><span>are</span><span>awesome</span><b>→ RNN → h<sub>T</sub> → linear → softmax →</b><span>positive 0.93</span></div>
+<div class="box key"><span class="lbl">Where do labels come from?</span><p>The softmax gives one probability per class (e.g. positive 0.5, negative 0.3, neutral 0.2). The prediction is the <b>highest</b> one. You don't assign the lower numbers to classes by hand; the model learns all three from labelled data.</p></div>
+
+<h2>Aspect-based sentiment analysis (ABSA)</h2>
+<div class="box ex"><span class="lbl">"Its battery is awesome but the camera is very poor."</span>
+<p>Overall polarity is mixed and meaningless. ABSA splits it: <b>battery → positive</b>, <b>camera → negative</b>. Similarly, "the food was good but the service was bad."</p></div>
+<ol class="steps">
+<li><b>Aspect term extraction:</b> find the aspects. "I like the service and the staff, but not the food" → service, staff, food. "Awesome form factor and great battery life" → form factor, battery life.</li>
+<li><b>Aspect polarity:</b> give each aspect a sentiment. Some aspects are <b>implicit</b>: "It was very expensive for what you get" (aspect = price, never named).</li>
+</ol>
+<p>Coarse-grained = sentence level. Fine-grained = aspect level. The field spans languages (English, Hindi, code-mixed and transliterated text), domains (e-commerce…) and techniques (feature-based → deep learning).</p>
+
+<h3>LSTM models for ABSA (Tang et al., 2016)</h3>
+<div class="tbl-wrap"><table>
+<tr><th>Model</th><th>Idea</th></tr>
+<tr><td>LSTM</td><td>Treats the target word like any other word, so it ignores which aspect we're asking about.</td></tr>
+<tr><td><b>TD-LSTM</b> (target-dependent)</td><td>Two LSTMs: one reads from the start <b>up to the target</b>, the other reads from the end <b>back to the target</b>. Combine both final states, so the target is the meeting point.</td></tr>
+<tr><td><b>TC-LSTM</b> (target-connection)</td><td>Like TD-LSTM, but the <b>target word's vector is concatenated</b> to every input word, so each word is read in relation to the aspect.</td></tr>
+</table></div>
+<p>Accuracy improved from LSTM → TD-LSTM → TC-LSTM.</p>
+
+<h3>Attention for ABSA</h3>
+<p>Design the attention so it focuses on words related to the aspect. Visualising the weights shows whether the model looked at "awesome" for battery and "poor" for camera. Benchmarks come from the <b>SemEval</b> shared tasks.</p>
+
+<h3>Beyond pairs: triplets and quads</h3>
+<div class="tbl-wrap"><table>
+<tr><th>Task</th><th>Output for "The pizza is delicious"</th></tr>
+<tr><td>Aspect sentiment triplet extraction</td><td>(aspect = pizza, opinion = delicious, polarity = positive)</td></tr>
+<tr><td>Aspect sentiment quad prediction</td><td>(pizza, delicious, positive, category = food quality)</td></tr>
+</table></div>
+<p><b>Multilinguality:</b> out-of-vocabulary words and English-only resources led to <b>bilingual word embeddings</b> and translation-based approaches.</p>
+
+<div class="box exam"><span class="lbl">Exam tip (flagged)</span>
+<p>From this topic, <b>aspect-based sentiment analysis</b> matters most: know its advantages and challenges and how you'd implement it with an RNN/LSTM (TD-LSTM, TC-LSTM, attention). Also know the four components of an attitude and the main challenges (negation, sarcasm, aspects).</p></div>
+<div class="box try"><span class="lbl">Try it</span>
+<p>Label the aspects and polarities: "The ambience and music were funky, which I enjoyed, but the wait was endless." (ambience: +, music: +, wait/service time: −)</p></div>
+<!--viz:absa-->
+<figure class="diagram viz" id="fig-absa"><svg class="vz" viewBox="0 0 840 180" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Aspect-based sentiment analysis: first find the aspects, then decide the polarity for each one, usually with attention on the opinion words near each aspect." style="max-width:840px" font-family="Inter,system-ui,sans-serif" font-size="13"><text x="420.0" y="22.0" text-anchor="middle" class="" font-size="13" font-weight="700">&quot;The food was delicious but the service was painfully slow.&quot;</text><rect x="40.0" y="50.0" width="170.0" height="50.0" rx="10" class="bx1"/><text x="125.0" y="71.0" text-anchor="middle" class="" font-size="12" font-weight="600">Aspect</text><text x="125.0" y="87.0" text-anchor="middle" class="" font-size="12" font-weight="600">extraction</text><line x1="212.0" y1="75.0" x2="270.0" y2="55.0" class="ar" stroke-width="1.8"/><polygon points="270.0,55.0 264.0,60.3 262.0,54.5" class="arf"/><line x1="212.0" y1="75.0" x2="270.0" y2="115.0" class="ar" stroke-width="1.8"/><polygon points="270.0,115.0 262.2,113.4 265.7,108.3" class="arf"/><rect x="272.0" y="35.0" width="170.0" height="40.0" rx="10" class="bx"/><text x="357.0" y="59.0" text-anchor="middle" class="" font-size="13" font-weight="600">food</text><rect x="272.0" y="95.0" width="170.0" height="40.0" rx="10" class="bx"/><text x="357.0" y="119.0" text-anchor="middle" class="" font-size="13" font-weight="600">service</text><line x1="444.0" y1="55.0" x2="520.0" y2="55.0" class="ar" stroke-width="1.8"/><polygon points="520.0,55.0 512.6,58.1 512.6,51.9" class="arf"/><line x1="444.0" y1="115.0" x2="520.0" y2="115.0" class="ar" stroke-width="1.8"/><polygon points="520.0,115.0 512.6,118.1 512.6,111.9" class="arf"/><rect x="522" y="35" width="200" height="40" rx="10" class="c3"/><text x="622.0" y="60.0" text-anchor="middle" class="hmt" font-size="12" font-weight="700">positive  (&quot;delicious&quot;)</text><rect x="522" y="95" width="200" height="40" rx="10" class="c2"/><text x="622.0" y="120.0" text-anchor="middle" class="hmt" font-size="12" font-weight="700">negative  (&quot;painfully slow&quot;)</text><text x="420.0" y="165.0" text-anchor="middle" class="mut" font-size="11">Document-level sentiment would just say &quot;mixed&quot;; ABSA says what is good and what is bad.</text></svg><figcaption>Aspect-based sentiment analysis: first find the aspects, then decide the polarity for each one, usually with attention on the opinion words near each aspect.</figcaption></figure>
+<!--/viz:absa-->
+<h2>From the lecture slides</h2>
+<h3>Sentiment lexicons with sizes (slides)</h3>
+<div class="tbl-wrap"><table><tr><th>Lexicon</th><th>Size / content</th></tr>
+<tr><td>General Inquirer (Stone et al. 1966)</td><td>Positive <b>1,915</b> words, Negative <b>2,291</b>; also strong/weak, active/passive, pleasure, pain, virtue, vice… Free for research</td></tr>
+<tr><td>LIWC (Pennebaker et al. 2007)</td><td><b>2,300</b> words, &gt;70 classes: affective (negative emotion: bad, weird, hate; positive: love, nice, sweet), cognitive (tentative: maybe, perhaps), pronouns, negation, quantifiers. Paid</td></tr>
+<tr><td>MPQA Subjectivity Cues (Wilson et al. 2005)</td><td><b>6,885</b> words: 2,718 positive, 4,912 negative, each marked strong or weak</td></tr>
+<tr><td>Bing Liu Opinion Lexicon (Hu &amp; Liu 2004)</td><td><b>6,786</b> words: 2,006 positive, 4,783 negative</td></tr>
+<tr><td>SentiWordNet 3.0 (2010)</td><td>Every WordNet synset scored for Pos/Neg/Obj: estimable(J,3) "may be computed" → Pos 0, Neg 0, Obj 1; estimable(J,1) "deserving of respect" → Pos 0.75, Neg 0, Obj 0.25</td></tr>
+</table></div>
+<h3>Subproblems (slide table)</h3>
+<div class="tbl-wrap"><table><tr><th>Subproblem</th><th>Example</th><th>Note</th></tr>
+<tr><td>Subjectivity</td><td>This movie is awesome / pathetic / 3-hours long</td><td>positive / negative / neutral (factual)</td></tr>
+<tr><td>Thwarted expectation</td><td>Impressive story, good acting, however, it didn't meet my expectations</td><td>the end dictates the sentiment</td></tr>
+<tr><td>Sarcasm</td><td>This movie is awesome to put you to sleep</td><td>criticism in a humorous way</td></tr>
+<tr><td>Humble bragging</td><td>My life is miserable, I have to sign 300 autographs per day</td><td>pride disguised as complaint</td></tr>
+<tr><td>Discourse-based</td><td>This movie is a classic, although I don't like sci-fi</td><td>connectives shift sentiment</td></tr>
+<tr><td>Sense-based</td><td>Shane Warne is a <b>deadly</b> spinner (+) vs The campus has <b>deadly</b> snakes (−)</td><td>word sense flips polarity</td></tr>
+<tr><td>Intensity</td><td>ok / good / awesome</td><td>weak / mild / strong positive</td></tr>
+</table></div>
+<ul>
+<li><b>More challenges:</b> similar words, different sentiment ("This movie is not good" vs "No movie can be better than this"); different wording, same sentiment ("extremely useless phone" / "wasted my money" / "could have bought an iPhone instead"); product-name variants (G-phone, Google-phone); "waste of time" (−) vs "throw your waste here" (neutral); sarcasm ("All the features you want, too bad they don't work :-P"); Dorothy Parker on Katherine Hepburn: "She runs the gamut of emotions from A to B"; user-written grammar and spelling; subject centrality; thwarted expectations ("This film should be brilliant… However, it can't hold up"); almost no resources for Indian languages.</li>
+<li><b>Tokenisation issues:</b> HTML/XML markup, Twitter names and hashtags, capitalisation (keep ALL-CAPS words), phone numbers and dates, emoticons. <b>Which words to use?</b> Only adjectives, or all words? <i>All words worked better</i> on the Pang &amp; Lee data.</li>
+<li><b>Public opinion:</b> Twitter sentiment tracks the Gallup consumer-confidence poll (O'Connor et al. 2010). <b>CALM</b> mood (not "happy") predicted the Dow Jones about 3 days later (Bollen et al. 2011), because markets depend on confidence and lack of panic.</li>
+<li><b>Coarse vs fine grained (slide example):</b> five camera-review sentences give a single sentence-level rating of <b>3.5★</b>, but aspect level shows Price 4.5★, Zoom 5.0★, Picture quality 4.5★, Battery 1.5★, Display 1.0★. Much more informative for a buyer.</li>
+<li><b>ABSA examples:</b> "The speed, the design… lightyears ahead" → Speed +, Design + · "Tech support would not fix the problem unless I bought your plan for $150 plus" → Tech support − · "Certainly not the best sushi in New York, however, it is always fresh, and the place is very clean" → Sushi <b>conflict</b>, Place +.</li>
+<li><b>Pipelines:</b> traditional = feature engineering (n-grams, cue words, lexicons) + SVM / decision tree. Deep = embeddings + CNN/LSTM + MLP → Positive / Negative / Neutral / Conflict.</li>
+<li><b>CNN for sentiment:</b> a linear layer slides over consecutive word pairs ("The movie", "movie is", "is very", "very good"), then <b>max-pooling</b> over each feature turns a variable-length input into a fixed vector (dominated by "very good"), then a feed-forward layer outputs the label. Word order changes ("very good was the movie") still give the same max-pooled features.</li>
+<li><b>TC-LSTM detail:</b> each word is paired with the target vector: LSTM<sub>L</sub>(Its, battery) → (battery, battery); LSTM<sub>R</sub>: (poor, battery) → (is, battery) → … → (battery, battery).</li>
+<li><b>Akhtar et al. 2018 (cross- and multi-linguality):</b> low-resource Hindi/French ABSA suffers from OOV words. Use <b>bilingual word embeddings</b> (Luong et al. 2015: skip-gram where a word's context includes aligned words from both languages, trained on a parallel corpus). Translate OOV words to English for a second lookup (e.g. two Hindi spellings of "combination"), and extract features with English lexicons (Bing Liu, MPQA, SentiWordNet). <i>Multilingual setup:</i> train and test on Hindi/French. <i>Cross-lingual setup:</i> train on English, test on Hindi/French.</li>
+<li><b>Attention for ABSA (Wang et al. 2016):</b> <b>AT-LSTM</b> adds the aspect at the attention layer. <b>ATAE-LSTM</b> adds the aspect embedding at both the input and attention layers. A multi-word aspect is averaged: v<sub>a</sub> = (emb<sub>battery</sub> + emb<sub>life</sub>)/2.</li>
+<li><b>ASTE:</b> "The pizza is delicious, but the service is terrible" → (pizza, delicious, positive), (service, terrible, negative). <b>Quad:</b> adds the aspect category (food, service).</li>
+</ul>
+<h3>Reported results (slides)</h3>
+<div class="two">
+<div class="card"><h4>Tang et al. 2016 (Dong et al. 2014 Twitter data)</h4><p>Train 6,248 / test 692 sentences; 25% pos, 25% neg, 50% neutral.<br>LSTM: acc 0.665, macro-F1 0.647<br>TD-LSTM: 0.708, 0.690<br>TC-LSTM: <b>0.715, 0.695</b></p></div>
+<div class="card"><h4>Wang et al. 2016 (SemEval-2014 restaurants)</h4><p>3-class / binary accuracy:<br>LSTM 82.0 / 88.3 · TD-LSTM 82.6 / 89.1 · TC-LSTM 81.9 / 89.2 · AT-LSTM 83.1 / 89.6 · <b>ATAE-LSTM 84.0 / 89.9</b><br>Data totals: positive 2,179 train / 657 test; negative 839 / 222; neutral 500 / 94.</p></div>
+</div>
+<h2 id="numericals">Numericals</h2>
+<p>The sentiment slides had no worked numericals, only reported figures (lexicon sizes, accuracies). The practice below uses those figures plus the mechanics covered in class.</p>
+<h3 class="numh"><span class="tag-prac">Practice</span></h3>
+<details class="sol"><summary class="q">P1. A classifier's softmax gives positive 0.5, negative 0.3, neutral 0.2. Prediction?</summary>
+<p><b>Positive</b>, the highest probability. You don't assign the other numbers to labels by hand.</p></details>
+<details class="sol"><summary class="q">P2. Apply the NOT_ trick to: "I didn't like the plot, but the music was great."</summary>
+<p>I didn't NOT_like NOT_the NOT_plot , but the music was great. (Negation stops at the punctuation.)</p></details>
+<details class="sol"><summary class="q">P3. ABSA: give (aspect, opinion, polarity) triplets for "Battery life is amazing but the screen scratches easily."</summary>
+<p>(battery life, amazing, positive), (screen, scratches easily, negative).</p></details>
+
+<details class="sol"><summary class="q">P4. What fraction of the MPQA and Bing Liu lexicons is negative?</summary>
+<p>MPQA: 4,912/6,885 ≈ <b>71%</b>. Bing Liu: 4,783/6,786 ≈ <b>70%</b>. Negative words dominate both.</p></details>
+<details class="sol"><summary class="q">P5. By how many accuracy points does TC-LSTM beat LSTM in Tang et al.? And ATAE-LSTM over LSTM (3-class) in Wang et al.?</summary>
+<p>0.715 − 0.665 = <b>5.0 points</b>. 84.0 − 82.0 = <b>2.0 points</b>.</p></details>
+<details class="sol"><summary class="q">P6. Aspect embedding for "battery life" if emb(battery) = [0.4, 0.2] and emb(life) = [0.0, 0.6].</summary>
+<p>v<sub>a</sub> = average = <b>[0.2, 0.4]</b>.</p></details>
+<details class="sol"><summary class="q">P7. With a bigram CNN feature, which bigram wins max-pooling for "the movie is very good" if the feature scores are 0.1, 0.0, 0.3, 0.9?</summary>
+<p><b>"very good"</b> (0.9). Its value is passed to the classifier.</p></details>

@@ -1,0 +1,157 @@
+<div class="tldr"><h3>In 30 seconds</h3><ul>
+<li><b>NLP</b> = engineering and applications. <b>CL</b> = science: using computation to study language. <b>NLU</b> = both together: represent <i>and</i> understand language.</li>
+<li><b>ELIZA</b> (1966) only pattern-matched. Looking right ≠ understanding. <b>SHRDLU</b> represented a small world, reasoned about it, and acted in it.</li>
+<li>The recipe for an NLU system: <b>corpus (+ annotation) → model → evaluation against humans</b>, repeated in a loop.</li>
+<li>Main enemy: <b>ambiguity</b>, both lexical (word level) and structural (phrase level).</li>
+<li>Shannon's idea: measure how <b>surprising</b> a word is, not what it means. This is the root of today's language models.</li>
+<li><b>NLP trinity:</b> languages × tasks × algorithms. One algorithm rarely wins everywhere.</li>
+</ul></div>
+<h2>What each idea is for</h2>
+<div class="tbl-wrap"><table class="uses">
+<tr><th>Concept</th><th>What it's for</th><th>Where it's used</th></tr>
+<tr><td>NLP</td><td>Building language applications that work</td><td>Search, translation, speech-to-text, assistants</td></tr>
+<tr><td>Computational linguistics</td><td>Using computers to test theories about language and cognition</td><td>Psycholinguistics, corpus studies, language documentation</td></tr>
+<tr><td>NLU</td><td>Making systems that represent and understand meaning</td><td>Question answering, reasoning, dialogue</td></tr>
+<tr><td>ELIZA</td><td>Shows that surface pattern matching can look intelligent without understanding</td><td>Rule-based chatbots; a cautionary example for evaluation</td></tr>
+<tr><td>SHRDLU</td><td>Shows that grounding language in a world representation lets a system reason and act</td><td>Robot instruction-following, grounded language learning</td></tr>
+<tr><td>Corpus → model → evaluation loop</td><td>The standard recipe for any NLP project</td><td>Every ML/NLP pipeline</td></tr>
+<tr><td>Surprisal &amp; dependency length</td><td>Cognitive metrics that check whether output is human-like</td><td>Evaluating language models, psycholinguistic studies</td></tr>
+<tr><td>Lexical / structural ambiguity</td><td>Naming the type of confusion tells you how to fix it</td><td>Word-sense disambiguation, parsing</td></tr>
+<tr><td>Distributional hypothesis</td><td>Learning meaning from co-occurrence, without hand-made dictionaries</td><td>word2vec, GloVe, LLMs</td></tr>
+<tr><td>NLP trinity</td><td>A reminder that results depend on the language × task × algorithm combination</td><td>Choosing models; multilingual benchmarks</td></tr>
+</table></div>
+
+
+<h2>Three names that sound alike</h2>
+<div class="tbl-wrap"><table>
+<tr><th></th><th>NLP<br><small>Natural Language Processing</small></th><th>CL<br><small>Computational Linguistics</small></th><th>NLU<br><small>Natural Language Understanding</small></th></tr>
+<tr><td>Focus</td><td>Engineering, applications</td><td>Science: understanding language itself</td><td>Both</td></tr>
+<tr><td>Language is treated as…</td><td>data / information to process</td><td>the object of study (its grammar and structure)</td><td>something to represent <i>and</i> understand</td></tr>
+<tr><td>Typical output</td><td>Search, speech-to-text, text-to-speech, sentiment and emotion detection</td><td>Computational models that respect <b>cognitive constraints</b>; theories that inspire models</td><td>Systems that represent language meaningfully and understand it</td></tr>
+<tr><td>Example question</td><td>"How do I build a good translator?"</td><td>"Do humans prefer shorter dependencies? Can a model show that?"</td><td>"Does my system <i>really</i> understand this sentence?"</td></tr>
+</table></div>
+<p>Back in the 1970s, AI, NLP, CL and cognitive science weren't separate fields. Everyone shared one goal: build a machine that understands language. Today they're separate departments that collaborate again, much like this course's students who come from many backgrounds.</p>
+
+<!--viz:nlp-venn-->
+<figure class="diagram viz" id="fig-nlp-venn"><svg class="vz" viewBox="0 0 630 270" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="NLP (engineering goal), CL (scientific goal) and NLU (the meaning part) overlap heavily: they share the same data, models and evaluation methods." style="max-width:630px" font-family="Inter,system-ui,sans-serif" font-size="13"><circle cx="250" cy="120" r="95" class="vn1"/><circle cx="380" cy="120" r="95" class="vn2"/><circle cx="315" cy="190" r="70" class="vn3"/><text x="200.0" y="90.0" text-anchor="middle" class="" font-size="15" font-weight="700">NLP</text><text x="200.0" y="108.0" text-anchor="middle" class="mut" font-size="11">build useful</text><text x="200.0" y="122.0" text-anchor="middle" class="mut" font-size="11">language tools</text><text x="430.0" y="90.0" text-anchor="middle" class="" font-size="15" font-weight="700">CL</text><text x="430.0" y="108.0" text-anchor="middle" class="mut" font-size="11">study language</text><text x="430.0" y="122.0" text-anchor="middle" class="mut" font-size="11">with computers</text><text x="315.0" y="215.0" text-anchor="middle" class="" font-size="15" font-weight="700">NLU</text><text x="315.0" y="232.0" text-anchor="middle" class="mut" font-size="11">understand meaning</text><text x="315.0" y="140.0" text-anchor="middle" class="mut" font-size="11">shared</text><text x="315.0" y="154.0" text-anchor="middle" class="mut" font-size="11">methods</text></svg><figcaption>NLP (engineering goal), CL (scientific goal) and NLU (the meaning part) overlap heavily: they share the same data, models and evaluation methods.</figcaption></figure>
+<!--/viz:nlp-venn-->
+<h2>Two famous historical systems</h2>
+<h3>ELIZA (1966): the polite parrot</h3>
+<p>Built by Joseph Weizenbaum at MIT to act like a psychotherapist.</p>
+<pre><code>User:  Men are all alike.
+ELIZA: IN WHAT WAY?
+User:  They're always bugging us about something or other.
+ELIZA: CAN YOU THINK OF A SPECIFIC EXAMPLE?
+User:  Well, my boyfriend made me come here.
+ELIZA: YOUR BOYFRIEND MADE YOU COME HERE?
+User:  He says I'm depressed much of the time.
+ELIZA: I AM SORRY TO HEAR YOU ARE DEPRESSED.</code></pre>
+<p>What's going on? ELIZA picks a key word from your sentence (<i>depressed, boyfriend</i>), drops it into a template, and asks a question back. It uses some grammar rules to keep the sentence well formed, but there's no real analysis. It's <b>shallow processing</b>: pattern matching and lexical repetition.</p>
+<div class="box key"><span class="lbl">Takeaway</span><p>Producing <b>appropriate-looking</b> responses is <b>not the same as understanding</b>.</p></div>
+
+<h3>SHRDLU (Terry Winograd, MIT): understanding inside a tiny world</h3>
+<p>SHRDLU lived in a "<b>micro-world</b>" of coloured blocks on a table, with a robotic arm. Tell it <i>"Pick up a big red block"</i> and it actually picks up the right block, then confirms "OK."</p>
+<div class="flow"><span>ELIZA: language</span><b>→</b><span>pattern match</span><b>→</b><span>respond</span></div>
+<div class="flow"><span>SHRDLU: language</span><b>→</b><span>represent the world</span><b>→</b><span>reason</span><b>→</b><span>act (arm)</span><b>→</b><span>respond</span></div>
+<p>SHRDLU had <b>declarative knowledge</b> (facts: "this block is red") and <b>procedural knowledge</b> (skills: how to grasp and with what force). It had domain knowledge and grammar built in. It goes beyond appropriate-looking responses and simulates some comprehension, a step towards the Total Turing test.</p>
+<p><b>Limitations:</b> it only worked in its micro-world, only in English, and only with text.</p>
+<p><b>Does it need to reply at all?</b> Strictly, no. Picking up the right block <i>is</i> the proof. But for a language system that interacts with people, the reply acknowledges that the instruction was understood.</p>
+
+<h2>The recipe for building an NLU / CL system</h2>
+<ol class="steps">
+<li><b>Get a corpus</b> (a dataset representing the language). It can be multimodal: text, audio, video.</li>
+<li><b>Annotate it</b> for your task, e.g. tag every word in "John sat near the bank" with its part of speech, or note root words (<i>running → run</i>).</li>
+<li><b>Build a model</b>: machine learning, a distributional model that picks up frequencies, or hand-written grammar rules.</li>
+<li><b>Evaluate against humans.</b> The model's choices should match the choices humans make.</li>
+<li><b>Loop:</b> find where it fails, improve, test again.</li>
+</ol>
+<div class="flow"><span>Linguistic data</span><b>→</b><span>Representation</span><b>→</b><span>Model</span><b>→</b><span>Empirical evaluation</span><b>↺</b></div>
+
+<h3>Evaluation metrics</h3>
+<ul>
+<li><b>Engineering metrics:</b> accuracy, confusion matrix, precision/recall/F1 (for classifiers), BLEU and ROUGE (for generated text).</li>
+<li><b>Cognitive metrics</b> (from psycholinguistics):
+ <ul><li><b>Surprisal</b>: human sentences tend to be <i>probable</i>, so they have low surprisal. A model's output should too. (Surprisal is the "opposite" of probability, covered in topic 05.)</li>
+ <li><b>Dependency length</b> (Dependency Locality Theory): in real sentences, related words sit closer together than they would in a random shuffle of the same words. Lower dependency length is more human-like.</li></ul></li>
+</ul>
+<div class="box ex"><span class="lbl">Example: a typical research setup</span>
+<p><b>Hypothesis:</b> "Human sentences have lower surprisal and shorter dependencies than random word orders."<br><b>Corpus:</b> a treebank. <b>Model:</b> compute surprisal and dependency length for real sentences and for shuffled versions. <b>Validate:</b> are real sentences lower on both? Then check whether machine-generated sentences behave the same way.</p></div>
+
+<!--viz:nlu-recipe-->
+<figure class="diagram viz" id="fig-nlu-recipe"><svg class="vz" viewBox="0 0 790 158" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The recipe for building an NLU / CL system is a loop: what you learn from the errors goes back into the data and the model." style="max-width:790px" font-family="Inter,system-ui,sans-serif" font-size="13"><rect x="15.0" y="30.0" width="104.0" height="56.0" rx="10" class="bx1"/><text x="67.0" y="54.0" text-anchor="middle" class="" font-size="12" font-weight="600">Collect</text><text x="67.0" y="70.0" text-anchor="middle" class="" font-size="12" font-weight="600">data</text><line x1="121.0" y1="58.0" x2="141.0" y2="58.0" class="ar" stroke-width="1.8"/><polygon points="141.0,58.0 133.6,61.1 133.6,54.9" class="arf"/><rect x="143.0" y="30.0" width="104.0" height="56.0" rx="10" class="bx"/><text x="195.0" y="54.0" text-anchor="middle" class="" font-size="12" font-weight="600">Annotate</text><text x="195.0" y="70.0" text-anchor="middle" class="" font-size="12" font-weight="600">(labels)</text><line x1="249.0" y1="58.0" x2="269.0" y2="58.0" class="ar" stroke-width="1.8"/><polygon points="269.0,58.0 261.6,61.1 261.6,54.9" class="arf"/><rect x="271.0" y="30.0" width="104.0" height="56.0" rx="10" class="bx"/><text x="323.0" y="54.0" text-anchor="middle" class="" font-size="12" font-weight="600">Choose a</text><text x="323.0" y="70.0" text-anchor="middle" class="" font-size="12" font-weight="600">model</text><line x1="377.0" y1="58.0" x2="397.0" y2="58.0" class="ar" stroke-width="1.8"/><polygon points="397.0,58.0 389.6,61.1 389.6,54.9" class="arf"/><rect x="399.0" y="30.0" width="104.0" height="56.0" rx="10" class="bx"/><text x="451.0" y="62.0" text-anchor="middle" class="" font-size="12" font-weight="600">Train</text><line x1="505.0" y1="58.0" x2="525.0" y2="58.0" class="ar" stroke-width="1.8"/><polygon points="525.0,58.0 517.6,61.1 517.6,54.9" class="arf"/><rect x="527.0" y="30.0" width="104.0" height="56.0" rx="10" class="bx1"/><text x="579.0" y="62.0" text-anchor="middle" class="" font-size="12" font-weight="600">Evaluate</text><line x1="633.0" y1="58.0" x2="653.0" y2="58.0" class="ar" stroke-width="1.8"/><polygon points="653.0,58.0 645.6,61.1 645.6,54.9" class="arf"/><rect x="655.0" y="30.0" width="104.0" height="56.0" rx="10" class="bx"/><text x="707.0" y="54.0" text-anchor="middle" class="" font-size="12" font-weight="600">Error</text><text x="707.0" y="70.0" text-anchor="middle" class="" font-size="12" font-weight="600">analysis</text><path d="M700,88 C700,135 70,135 70,88" class="ln2" stroke-width="2" fill="none" stroke-dasharray="5 4"/><text x="385.0" y="148.0" text-anchor="middle" class="ac2" font-size="11" font-weight="600">improve and repeat</text></svg><figcaption>The recipe for building an NLU / CL system is a loop: what you learn from the errors goes back into the data and the model.</figcaption></figure>
+<!--/viz:nlu-recipe-->
+<h2>The classic challenge: ambiguity</h2>
+<p>Even humans get confused, so imagine the poor machine.</p>
+<div class="box ex"><span class="lbl">Example: "At last, a computer that understands you like your mother."</span>
+<p>Three readings:</p>
+<ol><li>The computer understands you <b>as well as your mother does</b>.</li>
+<li>The computer understands <b>that you like your mother</b>.</li>
+<li>The computer understands you <b>as well as it understands your mother</b>. 😄</li></ol>
+<p>Speech makes it worse: an ASR system might hear "…understands <i>your lie cured mother</i>" (the slide's example; in class, "<i>you're like your mother</i>"). And "mother" has a technical meaning in vinegar-making (the culture that turns wine into vinegar), so domain knowledge matters too.</p></div>
+<div class="box ex"><span class="lbl">Example: "Copy the local patient files to disk."</span>
+<p>Is <b>local</b> describing the <i>patient</i> (a patient from nearby) or the <i>files</i> (files stored locally)? The class found that even modern chatbots trip on puzzles like this.</p></div>
+
+<div class="two">
+<div class="card"><h4>Lexical ambiguity</h4><p>One <b>word</b> has several meanings.<br><i>"John sat near the bank."</i> (river or money?)</p></div>
+<div class="card"><h4>Structural ambiguity</h4><p>One <b>sentence</b> can be grouped in different ways.<br><i>"John saw Mary with a telescope."</i> Does "with a telescope" attach to John or to Mary?</p></div>
+</div>
+
+<h2>Can we fix it with more data? Two powerful ideas</h2>
+<h3>1. "You shall know a word by the company it keeps" (J.R. Firth)</h3>
+<p>Words that appear together (co-occur) tell us about meaning. <i>Fisherman</i> near <i>bank</i> means river bank. With enough data, the co-occurrence counts sort out many ambiguities. This leads to the question: <i>Is NLP just a massive knowledge-engineering (data) project?</i></p>
+
+<h3>2. Claude Shannon: measure surprise, not meaning</h3>
+<p>Shannon, the father of information theory, said: "I don't care what a message <i>means</i>. I care how <b>surprising</b> it is given what came before."</p>
+<div class="box ex"><span class="lbl">Example: "Apples and ___"</span>
+<p>Most people say <b>oranges</b>. P(oranges | apples and) is high, so it carries little information. If someone says "apples and <b>carburettors</b>", that's very surprising and carries a lot of information.</p>
+<div class="formula">high probability → low information &nbsp;&nbsp;|&nbsp;&nbsp; low probability → high information</div>
+<p>This one idea runs today's large language models: they predict the next word from conditional probabilities.</p></div>
+
+<h2>"Computational linguistics without linguistics?"</h2>
+<p>Modern LLMs are driven mostly by frequency and next-word prediction. So where did the <b>L</b> in CL go? The professor argued for bringing linguistics back:</p>
+<ul>
+<li><b>Low-resource languages</b> (e.g. Munda in Jharkhand) have very little digital text, so data-hungry AI does poorly. Even Hindi has lots of text but little <i>linguistically annotated</i> text.</li>
+<li><b>Negation:</b> studies showed BERT-style models struggle with "not", double negatives, and language-specific negation patterns.</li>
+<li><b>Coreference resolution:</b> "Ram is a good boy. <u>He</u> went to school." Linking <i>he → Ram</i> is still hard for powerful models.</li>
+<li><b>Rare constructions:</b> humans handle rare but meaningful patterns easily. Models barely see them in training, so they don't learn them.</li>
+</ul>
+
+<h2>The NLP trinity</h2>
+<figure class="diagram">
+<svg viewBox="0 0 660 290" xmlns="http://www.w3.org/2000/svg" font-family="Inter,sans-serif" font-size="13" fill="currentColor">
+<defs><marker id="a3" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#3d5afe"/></marker></defs>
+<g stroke="#3d5afe" stroke-width="2" fill="none"><path d="M200 200 L620 200" marker-end="url(#a3)"/><path d="M200 200 L200 30" marker-end="url(#a3)"/><path d="M200 200 L80 262" marker-end="url(#a3)"/></g>
+<text x="210" y="225">Tasks: morphology → POS tagging → chunking → parsing</text>
+<text x="212" y="30">Algorithms: HMM, CRF, RNN, Transformer…</text>
+<text x="10" y="282">Languages: Hindi, Marathi, English…</text>
+<circle cx="400" cy="110" r="6" fill="#b4235a"/><text x="412" y="114">your problem = one point here</text>
+</svg><figcaption>An algorithm that works for one task in one language may fail for another task or language.</figcaption></figure>
+<p>That's why the field is so wide: there are many problems, in many languages, with many algorithms. It's also why big labs now chase <b>universal, multilingual models</b>.</p>
+
+<div class="box exam"><span class="lbl">Exam tip</span>
+<p>Know the NLP / CL / NLU differences, what ELIZA vs SHRDLU show (pattern matching vs representation, reasoning and action), lexical vs structural ambiguity with examples, and the "high probability = low information" idea.</p></div>
+<div class="box try"><span class="lbl">Try it</span>
+<p>Write one sentence with lexical ambiguity and one with structural ambiguity. For each, what extra context would remove the ambiguity?</p></div>
+<h2>From the lecture slides</h2>
+<div class="tbl-wrap"><table>
+<tr><th>Slide point</th><th>Detail</th></tr>
+<tr><td>NLP / CL / NLU in one line each</td><td>NLP: Language → Information (end-user applications). CL: Language → Model (part of a cognitive architecture). NLU: the shared goal. Pipeline: <b>Linguistic description → Computational representation → Empirical evaluation</b></td></tr>
+<tr><td>SHRDLU (1972)</td><td>Used language to report on its environment, plan actions, and reason about what was said. One of the first English parsers (grammar-based), and a "working proof" of language as procedural knowledge</td></tr>
+<tr><td>Building blocks of NLU</td><td><b>Datasets</b> (collected, annotated or crowdsourced; multilingual like Universal Dependencies; special corpora such as child language, learner corpora, eye-tracking) · <b>Processing</b> (symbolic grammars such as the English Resource Grammar, or stochastic/ML methods) · <b>Validation</b> against humans (performance metrics like BLEU; cognitive metrics)</td></tr>
+<tr><td>Typical NLP/CL setup</td><td>Pick a corpus → turn a hypothesis into something measurable (e.g. "adjectives help in sentiment analysis", "subcategorisation helps parsing") → build or learn a model → validate with internal and external metrics</td></tr>
+<tr><td>Ambiguity (1985 McDonnell-Douglas ad)</td><td>"At last, a computer that understands you like your mother." In speech it can be confused with "…understands <b>your lie cured mother</b>". <i>Mother</i> can also mean "a cask or vat used in vinegar-making"</td></tr>
+<tr><td>Evidence for "CL without linguistics" concerns</td><td><b>Bender &amp; Koller (2020)</b>: models trained only on form don't learn meaning or communicative intent. <b>Ettinger (2020)</b>: BERT is insensitive to negation and to role-based event prediction. Open question: how do we learn from rare but informative events?</td></tr>
+</table></div>
+<div class="box try"><span class="lbl">Closing discussion questions (from the slides)</span>
+<ol><li>If a machine produces a completely appropriate response to a sentence, does that mean it understands it? <i>(Think ELIZA: no.)</i></li>
+<li>What's the difference between processing language and understanding it? <i>(Processing maps input to output; understanding builds meaning grounded in the world, like SHRDLU.)</i></li>
+<li>If a model learns statistical patterns from enormous amounts of text, what exactly has it learned? <i>(Distributional regularities of form, which may or may not amount to meaning.)</i></li></ol>
+<p>Recommended reading: Lillian Lee, "I'm sorry Dave, I'm afraid I can't do that" (2001); Mark Steedman, "Romantics and Revolutionaries".</p></div>
+<h2 id="numericals">Practice (application questions)</h2>
+<p>No numericals were taught in this lecture. These questions check the concepts.</p>
+<details class="sol"><summary class="q">P1. Classify the ambiguity: (a) "The chicken is ready to eat." (b) "She went to the bat."</summary>
+<p>(a) <b>Structural</b>: is the chicken eating, or being eaten? The words are the same but the roles differ. (b) <b>Lexical</b>: <i>bat</i> could be the animal or the cricket bat.</p></details>
+<details class="sol"><summary class="q">P2. Is a grammar checker that flags "I eats" an NLP, CL or NLU system?</summary>
+<p>Mainly <b>NLP</b> (an application). If it were built to test a theory of agreement in human grammar, it would be <b>CL</b>.</p></details>
+<details class="sol"><summary class="q">P3. Which word carries more information: P(oranges | apples and) = 0.6 or P(carburettors | apples and) = 0.0001?</summary>
+<p><i>carburettors</i>. Lower probability means more surprise, which means more information (−log₂ 0.0001 ≈ 13.3 bits vs −log₂ 0.6 ≈ 0.74 bits).</p></details>
