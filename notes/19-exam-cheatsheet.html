@@ -13,6 +13,8 @@
 <header class="topbar"><div class="in"><button class="btn menu-btn" id="menuBtn" aria-label="Open menu">☰ Topics</button><a class="brand" href="../index.html">FoVL <span>Notes</span></a><div class="spacer"></div><a class="btn hide-sm" href="../notes/19-exam-cheatsheet.html">Cheat-sheet</a><button class="btn" id="themeBtn" aria-label="Toggle dark mode">☾ Theme</button></div><div class="progress"></div></header>
 <div class="layout">
 <aside class="side">
+<h4>Vision (course intro)</h4>
+<a class="" data-mod="00-computer-vision-intro" href="00-computer-vision-intro.html"><span class="n">00</span>Computer Vision: The Big Picture</a>
 <h4>Language, Information &amp; Classical NLP</h4>
 <a class="" data-mod="01-what-is-language" href="01-what-is-language.html"><span class="n">01</span>What is Language?</a>
 <a class="" data-mod="02-can-machines-understand" href="02-can-machines-understand.html"><span class="n">02</span>Can Machines Understand Language?</a>
@@ -50,14 +52,16 @@
 <p>Every numerical worked in class is in the <b>Numericals</b> section at the end of its topic page (marked <span class="tag-class">From class</span>), followed by 2–5 <span class="tag-prac">Practice</span> questions at the same level with hidden solutions.</p>
 <div class="tbl-wrap"><table class="uses">
 <tr><th>Topic</th><th>Numericals done in class / on the slides</th></tr>
+<tr><td><a href="00-computer-vision-intro.html#numericals">00 Vision intro</a></td><td>CLIP softmax with temperature; semantic vs instance label counts; HOG cell/feature count (128 cells, 3,780 features)</td></tr>
 <tr><td><a href="04-zipfs-law.html#numericals">04 Zipf</a></td><td>Range of three dice (3–18); f₁ = 2f₂; 50th vs 150th word (3×)</td></tr>
 <tr><td><a href="05-shannon-redundancy.html#numericals">05 Shannon</a></td><td>Bits for 1–8 (3) and for 26 letters (5); 2.3 bits/char → ~50% redundancy</td></tr>
 <tr><td><a href="06-information-theory.html#numericals">06 Info theory</a></td><td>Entropy of an 8-sided die (3 bits) and a coin (1 bit); binary entropy; MI = 0 if independent; MI symmetry proof</td></tr>
-<tr><td><a href="07-ngram-language-models.html#numericals">07 N-gram LMs</a></td><td>Slide corpus (I am Sam…): bigram/unigram P, SRILM logprob −2.01773 / −1.14267, ppl 2.169 / 1.930, file ppl 2.07; OOV + add-one (1/29); Markov chain P(is he cool) = 0.03</td></tr>
+<tr><td><a href="07-ngram-language-models.html#numericals">07 N-gram LMs</a></td><td>Slide corpus (I am Sam…): bigram/unigram P, SRILM logprob −2.01773 / −1.14267, ppl 2.169 / 1.930, file ppl 2.07; OOV + add-one (1/29); Markov chain P(is he cool) = 0.03; solution sheet: add-one bigram (4/12, 2/9, 1/10, 1/7), SRILM back-off −4.60133 / ppl 5.85, interpolation λ = 0.5 → ppl 6.63</td></tr>
 <tr><td><a href="08-pos-tagging-syntax.html#numericals">08 HMM</a></td><td>Model 1 (π ½, a<sub>AN</sub> ⅔…) validity; model 2 (π<sub>N</sub> 0.75…) "killer clown" NN = 0.045; q<sup>T</sup> sequences; FSA cat/car, baaa/bb/bac</td></tr>
 <tr><td><a href="09-neural-network-basics.html#numericals">09 NN basics</a></td><td>Pats/wags (2, 4, 5): lines w/b = 0.25/0.68, 1/1.5, 0.43/1.5, 0.93/2.13, cost 0.67 at 1/1.37; NN(2,1) = 0.82; (b−4)² descent; tanh-gradient quiz</td></tr>
-<tr><td><a href="10-word2vec.html#numericals">10 word2vec</a></td><td>Skip-gram params 3M + 3M = 6M; V = 6000, d = 200 → 26 pairs for 8 words; one-hot ⟂; quiz walk-through; CE −log 0.2</td></tr>
-<tr><td><a href="11-negative-sampling-glove.html#numericals">11 Neg. sampling / GloVe</a></td><td>44 sigmoids; co-occurrence matrix; ice/steam ratios 8.9, 0.085, 1.36, 0.96; 1/distance counting</td></tr>
+<tr><td><a href="10-word2vec.html#numericals">10 word2vec</a></td><td>Skip-gram params 3M + 3M = 6M; V = 6000, d = 200 → 26 pairs for 8 words; one-hot ⟂; quiz walk-through; CE −log 0.2; notebook: 20 pairs, 42 params, start loss ln 7</td></tr>
+<tr><td><a href="11-negative-sampling-glove.html#numericals">11 Neg. sampling / GloVe</a></td><td>44 sigmoids; co-occurrence matrix; ice/steam ratios 8.9, 0.085, 1.36, 0.96; c^0.75 sampling (0.186 / 0.137 / 0.081); X(ice, water) = 0.5</td></tr>
+<tr><td><a href="12-evaluating-embeddings.html#numericals">12 Embedding eval</a></td><td>Spearman ρ = 0.952 (Σd² = 4, n = 8); macro average over languages</td></tr>
 <tr><td><a href="13-neural-language-models.html#numericals">13 Neural LMs</a></td><td>4-gram 0.4 / 0.1; trigram generation probabilities; W·x = ⟨1.8, −11.9, 12.9, −8.9⟩, softmax ⟨0.24, 0.006, 0.73, 0.02⟩</td></tr>
 <tr><td><a href="14-rnns.html#numericals">14 RNNs</a></td><td>RNN-LM 96 params; POS 20,000; NER 18,050 (11 labels); CE 0.51 / 2.99; 0.5¹⁰ ≈ 0.00098; perplexity 1.44 vs 4.07</td></tr>
 <tr><td><a href="15-seq2seq-attention.html#numericals">15 Attention</a></td><td>Dot-product attention α = [0.2671, 0.0002, 0.7275, 0.0052], c = [1.2615, −0.7219]; Spanish→French params 32,262,144</td></tr>
@@ -144,6 +148,8 @@
 <tr><td>LSTM cell</td><td class="mono">c_t = f_t⊙c_(t−1) + i_t⊙c̃_t, &nbsp; h_t = o_t⊙tanh(c_t)</td></tr>
 <tr><td>Seq2seq link</td><td class="mono">s₀ = c = h_T (encoder's last state)</td></tr>
 <tr><td>Attention</td><td class="mono">e_(t,i) = s_t·h_i, &nbsp; α_t = softmax(e_t), &nbsp; c_t = Σᵢ α_(t,i) h_i</td></tr>
+<tr><td>Interpolation</td><td class="mono">P = λ·P_bigram + (1−λ)·P_unigram</td></tr>
+<tr><td>Spearman</td><td class="mono">ρ = 1 − 6Σd² / (n(n²−1))</td></tr>
 <tr><td>MRR</td><td class="mono">(1/|Q|) Σ 1/rank_q</td></tr>
 <tr><td>B-Cubed</td><td class="mono">P(m) = |sys(m) ∩ gold(m)|/|sys(m)|, &nbsp; R(m) = |sys(m) ∩ gold(m)|/|gold(m)|, averaged over mentions</td></tr>
 <tr><td>Seq2seq params</td><td class="mono">embeddings V×E + enc (E·h + h·h) + dec ((E+ctx)·h + h·h) + attention + h×V_target</td></tr>
@@ -190,5 +196,5 @@
 <div class="pager"><a class="prev" href="18-sentiment-analysis.html"><small>← Previous</small>Sentiment &amp; Aspect-Based Analysis</a><a class="next" href="../index.html"><small>Done →</small>Back to all topics</a></div>
 </article></main>
 </div>
-<footer class="foot">FoVL Notes · written from the course lecture recordings (Foundations of Vision &amp; Language, IIT Jodhpur) · for revision, not a substitute for the slides.</footer>
+<footer class="foot">FoVL Notes · written from the course lecture recordings and slides (Foundations of Vision &amp; Language, IIT Jodhpur) · for revision, not a substitute for the slides.</footer>
 </body></html>
